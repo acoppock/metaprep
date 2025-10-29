@@ -1,14 +1,25 @@
 Package: metaprep
-Title: Meta-analysis preparation tools
-Version: 0.0.0.9000
-Authors@R: 
-    person("Alex Coppock", role = "ctb")
-Description: metaprep provides tools to prepare regression fits for
-    meta-analysis.
+Type: Package
+Title: Tools for Extracting and Checking Model Fits
+Version: 0.1.0
+Authors@R: c(person(
+      given = "Alex",
+      family = "Coppock",
+      email = "alex@example.com",
+      role = c("aut", "cre")))
+Description: Helper functions to prepare, extract, and inspect model fits
+    in a tidy, reproducible way.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Imports: 
-    broom
+Imports:
+    broom,
+    dplyr,
+    stringr,
+    tibble,
+    purrr
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
