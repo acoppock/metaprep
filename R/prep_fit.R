@@ -51,10 +51,34 @@
 #' @importFrom tibble tibble
 #' @export
 prep_fit <- function(fit, term) {
-  stopifnot(is.character(term), length(term) > 0)
+  stopifnot(is.character(term),
+            length(term) > 0,
+            class(fit) == "lm_robust")
 
-  tidy_obj <- broom::tidy(fit)
-  glance_obj <- broom::glance(fit)
+  n_y <- length(fit$outcome)
+  p <- length(fit$term)
+
+  if (n_y > 1) {
+    tidy_obj <-
+      tidy(fit) |>
+      mutate(term = paste0(
+        rep(fit$outcome, each = p),
+        ":",
+        rep(fit$term, times = n_y)
+      ))
+    glance_obj <- data.frame(
+      r.squared = NA_real_,
+      adj.r.squared = NA_real_,
+      statistic = NA_real_,
+      p.value = NA_real_,
+      df.residual = NA_real_,
+      nobs = NA_real_
+    )
+  } else {
+    tidy_obj <- tidy(fit)
+    glance_obj <- glance(fit)
+  }
+
   vcov_obj <- vcov(fit)
 
   # Build regex pattern to match any of the requested terms
@@ -75,6 +99,3 @@ prep_fit <- function(fit, term) {
     vcov_obj = list(vcov_sel)
   )
 }
-
-
-
