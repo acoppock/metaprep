@@ -99,7 +99,7 @@ Now we're ready to do meta-analysis
 ```{r}
 meta_fit <- 
   rma.mv(yi = estimate, V = bdiag_vcov, data = estimates_df) |> 
-  robust(cluster = study)
+  robust(cluster = study, clubSandwich = TRUE)
 tidy(meta_fit)
 ```
 
