@@ -1,0 +1,136 @@
+---
+title: "Preparing multi-arm trials for meta-analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Preparing multi-arm trials for meta-analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+When meta-analyzing effect estimates obtained from multi-arm trials, we have to account for the dependence across estimates that arises when multiple treatment arms are compared to the same control group. The statistical methods for this have been worked out, as has an excellent software implementation in the `metafor` pacakge. In short, we can just pass a block-diaagonal variance-covariance matrix to the `rma` function that will appropriately account for this dependence.
+
+The annoying part is making the block-diagonal variance covariance matrix. The `metaprep` package helps with this bit of bookkeeping.
+
+```{r setup, message=FALSE}
+set.seed(343)
+library(tidyverse) # because we always need the tidyverse
+library(randomizr) # to conduct random assignments
+library(estimatr) # to estimate treatment effects and vcov
+library(fabricatr)
+library(metaprep) # preparing the estimates for meta-analysis 
+library(metafor) # actually doing the meta-analysis
+library(clubSandwich) # correction for small number of clusters
+```
+
+# Three experiments
+
+Let's make fake data for three experiments. All three have a binary outcome. The first one is small (N = 50) and has two arms. The second is a little bigger (N = 100) and has three arms. The third is the biggest (N = 200) and has four arms.
+
+```{r}
+dat_1 <- 
+  fabricate(
+    N = 50,
+    latent = rnorm(N),
+    Y_Z_T1 = rbinom(n = N, 1, prob = pnorm(latent)),
+    Y_Z_T2 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
+    Z = complete_ra(N = N, num_arms = 2),
+    Y = reveal_outcomes(Y ~ Z)
+  )
+
+dat_2 <- 
+  fabricate(
+    N = 100,
+    latent = rnorm(N),
+    Y_Z_T1 = rbinom(n = N, 1, prob = pnorm(latent)),
+    Y_Z_T2 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
+    Y_Z_T3 = rbinom(n = N, 1, prob = pnorm(latent + 0.3)),
+    Z = complete_ra(N = N, num_arms = 3),
+    Y = reveal_outcomes(Y ~ Z)
+  )
+dat_3 <- 
+  fabricate(
+    N = 200,
+    latent = rnorm(N),
+    Y_Z_T1 = rbinom(n = N, 1, prob = pnorm(latent)),
+    Y_Z_T2 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
+    Y_Z_T3 = rbinom(n = N, 1, prob = pnorm(latent + 0.3)),
+    Y_Z_T4 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
+    Z = complete_ra(N = N, num_arms = 4),
+    Y = reveal_outcomes(Y ~ Z)
+  )
+```
+
+Now we estimate treatment effects
+
+```{r}
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+fit_3 <- lm_robust(Y ~ Z, data = dat_3)
+```
+
+Here comes the `metaprep` part:
+
+```{r}
+prepped_fit_1 <- prep_fit(fit_1, term = c("ZT2"))
+prepped_fit_2 <- prep_fit(fit_2, term = c("ZT2", "ZT3"))
+prepped_fit_3 <- prep_fit(fit_3, term = c("ZT2", "ZT3", "ZT4"))
+
+fits_df <-
+  bind_rows(
+    `Study 1` = prepped_fit_1,
+    `Study 2` = prepped_fit_2,
+    `Study 3` = prepped_fit_3,
+    .id = "study"
+  )
+
+estimates_df <-  get_estimates_df(fits_df)
+bdiag_vcov <- get_bdiag_vcov(fits_df)
+```
+
+Now we're ready to do meta-analysis
+
+```{r}
+meta_fit <- 
+  rma.mv(yi = estimate, V = bdiag_vcov, data = estimates_df) |> 
+  robust(cluster = study)
+tidy(meta_fit)
+```
+
+# What's going on 
+
+If you're interested, here's what's happening in these functions.
+
+`prep_fit` conducts three post-estimation functions on the regression fit, `tidy`, `glance`, and `vcov`. It subsets the rows of the `tidy_object` and the rows and columns of the `vcov_object` to the "terms" that are at issue in the meta-analysis (i.e., in this case we're letting the intercept go. If the regressions adjusted for covariates, we could also let those go).  The resulting three objects are wrapped in a `tibble` where the cells are themselves data frames:
+
+```{r}
+prepped_fit_1
+```
+
+We then bind all the prepped fits together with an id variable
+
+```{r}
+fits_df
+```
+
+The `get_estimates_df` function just extracts the estimates:
+
+```{r}
+get_estimates_df(fits_df)
+```
+
+and the `get_bdiag_vcov` function extracts each `vcov_obj` and puts them in a block-diagonal matrix
+
+```{r}
+get_bdiag_vcov(fits_df)
+```
+
+
+
+
