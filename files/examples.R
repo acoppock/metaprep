@@ -4,7 +4,7 @@
 #' nest_by() + mutate() + reframe() pattern throughout.
 
 library(estimatr)
-library(tidyverse)
+library(dplyr)
 library(metafor)
 library(broom)
 
@@ -17,12 +17,13 @@ dat <- data.frame(
   Y = rnorm(200),
   Z = factor(sample(c("T0", "T1", "T2"), 200, TRUE)),
   country = sample(c("USA", "UK", "Canada"), 200, TRUE),
-  cue_type = sample(c("visual", "auditory"), 200, TRUE)
+  cue_type = sample(c("visual", "auditory"), 200, TRUE),
+  study_id = rep(1:4, each = 50)
 )
 
 # Fit models using nest_by pattern
 prepped_fits <- dat |>
-  nest_by(country, cue_type) |>
+  nest_by(study_id, country, cue_type) |>
   mutate(
     fit_obj = list(lm_robust(Y ~ Z, data = data)),
     prep_obj = list(prep_fit(fit_obj, term = c("ZT1", "ZT2")))
@@ -31,22 +32,25 @@ prepped_fits <- dat |>
   ungroup()
 
 # Create estimates_vcov object
-ev <- as_estimates_vcov(prepped_fits) |>
-  mutate(id = 1:n())
+ev <- as_estimates_vcov(prepped_fits)
 
 # ========================================================================
 # EXAMPLE 1: Simple Meta-Analysis by Group
 # ========================================================================
-
-rma_mv_helper(ev, yi = estimate, random = ~ 1 | id)
 
 # Get pooled estimates by cue type
 results <- ev |>
   nest_by(cue_type) |>
   mutate(
     rma_fit = list(rma_mv_helper(data, yi = estimate)),
-  )|>
-  reframe(tidy(rma_fit, conf.int = TRUE))
+    pooled_est = rma_fit$b[1],
+    pooled_se = rma_fit$se[1],
+    ci_lb = rma_fit$ci.lb[1],
+    ci_ub = rma_fit$ci.ub[1],
+    p_value = rma_fit$pval[1]
+  )
+
+results
 
 # ========================================================================
 # EXAMPLE 2: Tidy the Meta-Analysis Results
@@ -116,13 +120,13 @@ full_results <- ev |>
   )
 
 # Unnest tidy results
-full_results |>
-  select(cue_type, tidy_obj) |>
+full_results |> 
+  select(cue_type, tidy_obj) |> 
   unnest(tidy_obj)
 
 # Unnest glance results
-full_results |>
-  select(cue_type, glance_obj) |>
+full_results |> 
+  select(cue_type, glance_obj) |> 
   unnest(glance_obj)
 
 # ========================================================================
@@ -185,7 +189,7 @@ fe_vs_re <- ev |>
   nest_by(cue_type) |>
   mutate(
     fe_fit = list(rma_mv_helper(data, yi = estimate, method = "FE")),
-    re_fit = list(rma_mv_helper(data, yi = estimate, random = ~ 1 | id, method = "REML")),
+    re_fit = list(rma_mv_helper(data, yi = estimate, method = "REML")),
     fe_est = fe_fit$b[1],
     re_est = re_fit$b[1],
     tau2 = re_fit$tau2,
@@ -197,6 +201,14 @@ fe_vs_re
 # ========================================================================
 # EXAMPLE 11: Multiple Moderators
 # ========================================================================
+
+ev |>
+  nest_by(study_id) |>
+  mutate(
+    rma_fit = list(rma_mv_helper(data, yi = estimate, mods = ~ country + cue_type))
+  ) |>
+  reframe(tidy(rma_fit))
+
 # ========================================================================
 # EXAMPLE 12: Chain Multiple Operations Before Grouping
 # ========================================================================
@@ -248,7 +260,7 @@ forest(fitted_models$rma_fit[[1]])
 # A realistic workflow combining multiple operations
 final_results <- ev |>
   # Filter
-  # filter(p.value < 0.05) |>
+  filter(p.value < 0.05) |>
   # Add derived variables
   mutate(
     effect_size_category = case_when(
@@ -272,6 +284,76 @@ final_results <- ev |>
   arrange(country, effect_size_category)
 
 final_results
+
+# ========================================================================
+# EXAMPLE 16: Using left_join to Add Metadata
+# ========================================================================
+
+# Create a lookup table with additional metadata
+country_metadata <- data.frame(
+  country = c("USA", "UK", "Canada"),
+  region = c("North America", "Europe", "North America"),
+  population_millions = c(331, 67, 38),
+  stringsAsFactors = FALSE
+)
+
+# Add metadata with left_join
+ev_with_metadata <- ev |>
+  left_join(country_metadata, by = "country")
+
+# Now you can use the new columns
+ev_with_metadata |>
+  nest_by(region) |>
+  mutate(
+    n_countries = length(unique(data$data$country)),
+    rma_fit = list(rma_mv_helper(data, yi = estimate)),
+    pooled_est = rma_fit$b[1]
+  )
+
+# IMPORTANT: left_join must not change the number of rows!
+# This would error:
+# bad_lookup <- data.frame(
+#   country = c("USA", "USA", "UK"),  # USA appears twice!
+#   category = c("A", "B", "C")
+# )
+# ev |> left_join(bad_lookup, by = "country")  # ERROR!
+
+# ========================================================================
+# EXAMPLE 17: Using semi_join and anti_join for Filtering
+# ========================================================================
+
+# Filter to specific countries using semi_join
+countries_to_keep <- data.frame(country = c("USA", "Canada"))
+
+ev_filtered <- ev |>
+  semi_join(countries_to_keep, by = "country")
+
+# Remove specific countries using anti_join
+countries_to_remove <- data.frame(country = "UK")
+
+ev_filtered2 <- ev |>
+  anti_join(countries_to_remove, by = "country")
+
+# These are equivalent to filter(), but useful when you have
+# a separate table defining which rows to keep/remove
+
+# ========================================================================
+# EXAMPLE 18: Creating from Separate Pieces
+# ========================================================================
+
+# If you already extracted estimates and vcov separately
+estimates_df <- get_estimates_df(prepped_fits)
+vcov_matrix <- get_bdiag_vcov(prepped_fits)
+
+# Combine them into an estimates_vcov object
+ev_from_pieces <- estimates_vcov_from_pieces(estimates_df, vcov_matrix)
+
+# Now use it normally
+ev_from_pieces |>
+  nest_by(country) |>
+  mutate(
+    rma_fit = list(rma_mv_helper(data, yi = estimate))
+  )
 
 # ========================================================================
 # WORKFLOW SUMMARY

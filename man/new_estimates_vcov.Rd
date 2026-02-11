@@ -4,7 +4,7 @@
 \alias{new_estimates_vcov}
 \title{Low-level constructor for estimates_vcov}
 \usage{
-new_estimates_vcov(data, vcov, row_map = NULL)
+new_estimates_vcov(estimates, vcov, row_map = NULL)
 }
 \description{
 Low-level constructor for estimates_vcov

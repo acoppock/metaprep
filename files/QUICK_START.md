@@ -71,15 +71,22 @@ ev |>
 - `filter()` - Subsets data and vcov
 - `slice()` - Subsets by position
 - `arrange()` - Reorders data and vcov
+- `semi_join()` - Filters rows based on another table
+- `anti_join()` - Filters out rows based on another table
 
 ### Column operations (vcov unchanged):
 - `mutate()` - Adds/modifies columns
 - `select()` - Selects columns
 - `rename()` - Renames columns
 - `relocate()` - Reorders columns
+- `left_join()` - Adds columns from another table (must not change row count!)
 
 ### Grouping operation:
 - `nest_by()` - Creates rowwise tibble with nested estimates_vcov objects
+
+### NOT supported (would break synchronization):
+- `right_join()`, `inner_join()`, `full_join()` - These can add/remove rows
+- Use `left_join()` for adding columns, `filter()` for removing rows
 
 ### Meta-analysis helpers:
 - `rma_mv_helper()` - Wrapper for metafor::rma.mv()
@@ -88,6 +95,7 @@ ev |>
 
 ### Utility:
 - `fix_vcov()` - Fix floating-point issues in vcov matrices
+- `estimates_vcov_from_pieces()` - Create from separate estimates_df and vcov_matrix
 
 ## The Idiomatic Pattern
 

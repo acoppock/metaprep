@@ -9,21 +9,21 @@ rma_mv_helper(object, yi, V = NULL, ...)
 \arguments{
 \item{object}{An estimates_vcov object}
 
-\item{yi}{Formula or numeric vector specifying the effect sizes (passed to rma.mv)}
+\item{yi}{Formula or bare column name specifying the effect sizes (e.g., \code{estimate})}
 
-\item{V}{Formula or variance-covariance matrix (defaults to the vcov from object)}
+\item{V}{Variance-covariance matrix (defaults to the vcov from object)}
 
-\item{...}{Additional arguments passed to \code{\link[metafor:rma.mv]{metafor::rma.mv()}}}
+\item{...}{Additional arguments passed to \code{\link[metafor:rma.mv]{metafor::rma.mv()}}, such as \code{random}, \code{mods}, etc.}
 }
 \value{
 An object of class \code{rma.mv} as returned by \code{\link[metafor:rma.mv]{metafor::rma.mv()}}
 }
 \description{
 A convenience wrapper for \code{\link[metafor:rma.mv]{metafor::rma.mv()}} that automatically extracts
-the data and variance-covariance matrix from an estimates_vcov object.
+the estimates data frame and variance-covariance matrix from an estimates_vcov object.
 
 This function passes all arguments directly to \code{\link[metafor:rma.mv]{metafor::rma.mv()}}, but
-handles the data and V arguments automatically.
+handles the \code{data} and \code{V} arguments automatically.
 }
 \examples{
 \dontrun{
@@ -31,44 +31,41 @@ library(metafor)
 library(estimatr)
 library(dplyr)
 
-# Create example data
-dat <- data.frame(
-  Y = rnorm(100),
-  Z = factor(sample(c("T0", "T1", "T2"), 100, TRUE)),
-  country = sample(c("USA", "UK"), 100, TRUE),
-  cue_type = sample(c("visual", "auditory"), 100, TRUE)
+# Simulate three multi-arm trials
+set.seed(123)
+dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
+
+# Prep and combine
+prepped_fits <- bind_rows(
+  study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
+  study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+  study3 = prep_fit(lm_robust(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+  .id = "study"
 )
 
-# Fit models and prep
-prepped_fits <- dat |>
-  nest_by(country, cue_type) |>
-  mutate(
-    fit = list(lm_robust(Y ~ Z, data = data)),
-    prep_obj = list(prep_fit(fit, term = "ZT1"))
-  ) |>
-  unnest(prep_obj)
-
-# Create estimates_vcov object
 ev <- as_estimates_vcov(prepped_fits)
 
-# Simple meta-analysis
-ev |> rma_mv_helper(yi = estimate)
+# Simple meta-analysis with random effects
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 
 # With moderators
-ev |> rma_mv_helper(yi = estimate, mods = ~ country)
+ev |> rma_mv_helper(yi = estimate, mods = ~ study, random = ~ 1 | id)
 
 # Filter then analyze
 ev |>
-  filter(country == "USA") |>
-  rma_mv_helper(yi = estimate)
+  filter(study != "study1") |>
+  rma_mv_helper(yi = estimate, random = ~ 1 | id)
 
-# Group then analyze
+# Grouped meta-analysis
 ev |>
-  nest_by(cue_type) |>
+  mutate(arm = ifelse(term == "ZT1", "T1", "T2+")) |>
+  nest_by(arm) |>
   mutate(
-    rma_fit = list(rma_mv_helper(data, yi = estimate))
+    rma_fit = list(rma_mv_helper(data, yi = estimate, random = ~ 1 | id))
   ) |>
-  reframe(tidy(rma_fit))
+  reframe(broom::tidy(rma_fit))
 }
 
 }

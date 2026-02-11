@@ -12,8 +12,8 @@
 #'
 #' @return An object of class `estimates_vcov` containing:
 #' \describe{
-#'   \item{data}{A tibble of unnested coefficient estimates}
-#'   \item{vcov}{A block-diagonal variance-covariance matrix}
+#'   \item{estimates}{A tibble of unnested coefficient estimates with an `id` column}
+#'   \item{vcov}{A block-diagonal variance-covariance matrix with rownames/colnames matching `id`}
 #'   \item{row_map}{Integer vector tracking original row indices}
 #' }
 #'
@@ -22,29 +22,38 @@
 #' library(estimatr)
 #' library(dplyr)
 #'
-#' # Fit models across groups
-#' prepped_fits <- dat |>
-#'   nest_by(study, country) |>
-#'   mutate(
-#'     fit = list(lm_robust(Y ~ Z, data = data)),
-#'     prep = list(prep_fit(fit, term = c("ZT1", "ZT2")))
-#'   ) |>
-#'   unnest(prep)
+#' # Simulate three multi-arm trials
+#' set.seed(123)
+#' dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+#' dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+#' dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
+#'
+#' # Estimate and prep
+#' prepped_fits <- bind_rows(
+#'   study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
+#'   study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+#'   study3 = prep_fit(lm_robust(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+#'   .id = "study"
+#' )
 #'
 #' # Create estimates_vcov object
 #' ev <- as_estimates_vcov(prepped_fits)
+#' ev
 #'
-#' # Now use with dplyr verbs
-#' ev |> filter(country == "USA")
+#' # Use dplyr verbs - vcov stays synchronized
+#' ev |> filter(study == "study2")
 #' ev |> arrange(estimate)
-#' ev |> mutate(abs_estimate = abs(estimate))
+#' ev |> mutate(se = std.error)
 #'
-#' # And with meta-analysis
-#' ev |>
-#'   filter(country == "USA") |>
-#'   rma_mv_helper(yi = estimate)
+#' # Meta-analysis with automatic vcov handling
+#' ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #' }
 #'
+#' @importFrom dplyr select pull
+#' @importFrom tidyr unnest
+#' @importFrom Matrix bdiag
+#' @importFrom tibble as_tibble add_column
+#' @importFrom rlang abort
 #' @export
 as_estimates_vcov <- function(prepped_fits_df) {
   # --- Defensive checks ----
@@ -59,47 +68,121 @@ as_estimates_vcov <- function(prepped_fits_df) {
     )
   }
 
-  # Extract tidy data (unnested)
-  data <- prepped_fits_df |>
-    dplyr::select(-dplyr::any_of(c("glance_obj", "vcov_obj"))) |>
-    tidyr::unnest(cols = "tidy_obj")
-
-  # Extract vcov matrix (block diagonal)
-  vcov <- prepped_fits_df |>
-    dplyr::pull(vcov_obj) |>
-    Matrix::bdiag() |>
-    as.matrix()
+  # Extract estimates and vcov using the unified methods
+  estimates <- get_estimates_df(prepped_fits_df)
+  vcov <- get_vcov(prepped_fits_df) |> as.matrix()
 
   # Validate dimensions
-  if (nrow(data) != nrow(vcov)) {
+  if (nrow(estimates) != nrow(vcov)) {
     rlang::abort(
       "Dimension mismatch between estimates and vcov matrix.",
-      "i" = sprintf("data has %d rows, vcov has %d rows", nrow(data), nrow(vcov))
+      "i" = sprintf("estimates has %d rows, vcov has %d rows", nrow(estimates), nrow(vcov))
     )
   }
 
-  new_estimates_vcov(data, vcov)
+  new_estimates_vcov(estimates, vcov)
+}
+
+#' Create estimates_vcov from separate estimates and vcov
+#'
+#' @description
+#' Alternative constructor for estimates_vcov objects when you already have
+#' the estimates data frame and block-diagonal vcov matrix separately.
+#'
+#' This is useful if you've already called [get_estimates_df()] and
+#' [get_vcov()] and want to combine them into a synchronized object.
+#'
+#' @param estimates_df A data frame or tibble of coefficient estimates,
+#'   typically from [get_estimates_df()].
+#' @param vcov_matrix A variance-covariance matrix, typically from
+#'   [get_vcov()]. Must have dimensions matching the number of
+#'   rows in estimates_df.
+#'
+#' @return An object of class `estimates_vcov`
+#'
+#' @examples
+#' \dontrun{
+#' # If you already have separate pieces
+#' estimates_df <- get_estimates_df(prepped_fits)
+#' vcov_matrix <- get_vcov(prepped_fits)
+#'
+#' # Combine them into an estimates_vcov object
+#' ev <- estimates_vcov_from_pieces(estimates_df, vcov_matrix)
+#'
+#' # Now you can use dplyr verbs with automatic vcov synchronization
+#' ev |> filter(country == "USA")
+#' }
+#'
+#' @export
+estimates_vcov_from_pieces <- function(estimates_df, vcov_matrix) {
+  # --- Defensive checks ----
+  if (!is.data.frame(estimates_df)) {
+    rlang::abort("`estimates_df` must be a data frame or tibble.")
+  }
+
+  if (!is.matrix(vcov_matrix)) {
+    # Try to coerce from sparse matrix
+    if (inherits(vcov_matrix, "Matrix")) {
+      vcov_matrix <- as.matrix(vcov_matrix)
+    } else {
+      rlang::abort("`vcov_matrix` must be a matrix or Matrix object.")
+    }
+  }
+
+  # Validate dimensions
+  if (nrow(estimates_df) != nrow(vcov_matrix)) {
+    rlang::abort(
+      "Dimension mismatch between estimates and vcov matrix.",
+      "i" = sprintf(
+        "estimates_df has %d rows, vcov_matrix has %d rows",
+        nrow(estimates_df), nrow(vcov_matrix)
+      )
+    )
+  }
+
+  if (nrow(vcov_matrix) != ncol(vcov_matrix)) {
+    rlang::abort(
+      "vcov_matrix must be square.",
+      "i" = sprintf(
+        "vcov_matrix has dimensions %d x %d",
+        nrow(vcov_matrix), ncol(vcov_matrix)
+      )
+    )
+  }
+
+  # Create the object
+  new_estimates_vcov(estimates_df, vcov_matrix)
 }
 
 #' Low-level constructor for estimates_vcov
 #'
 #' @keywords internal
-new_estimates_vcov <- function(data, vcov, row_map = NULL) {
+new_estimates_vcov <- function(estimates, vcov, row_map = NULL) {
   # Validate
   stopifnot(
-    is.data.frame(data),
+    is.data.frame(estimates),
     is.matrix(vcov),
-    nrow(data) == nrow(vcov),
+    nrow(estimates) == nrow(vcov),
     nrow(vcov) == ncol(vcov)
   )
 
   if (is.null(row_map)) {
-    row_map <- seq_len(nrow(data))
+    row_map <- seq_len(nrow(estimates))
   }
+
+  # Add id column if not present, and set rownames/colnames on vcov
+  estimates <- tibble::as_tibble(estimates)
+  if (!"id" %in% names(estimates)) {
+    estimates <- tibble::add_column(estimates, id = as.character(row_map), .before = 1)
+  }
+
+  # Set rownames and colnames on vcov matrix to match id
+  rownames(vcov) <- estimates$id
+  colnames(vcov) <- estimates$id
 
   structure(
     list(
-      data = tibble::as_tibble(data),
+      estimates = estimates,
       vcov = vcov,
       row_map = row_map
     ),
@@ -111,120 +194,210 @@ new_estimates_vcov <- function(data, vcov, row_map = NULL) {
 print.estimates_vcov <- function(x, ...) {
   cat("<estimates_vcov>\n")
   cat(sprintf("# %d estimates with %dx%d vcov matrix\n",
-              nrow(x$data), nrow(x$vcov), ncol(x$vcov)))
+              nrow(x$estimates), nrow(x$vcov), ncol(x$vcov)))
   cat("\n")
-  print(x$data, ...)
+  print(x$estimates, ...)
   invisible(x)
 }
 
 #' @export
 as.data.frame.estimates_vcov <- function(x, ...) {
-  x$data
+  x$estimates
 }
 
 #' @export
 as_tibble.estimates_vcov <- function(x, ...) {
-  x$data
+  x$estimates
 }
 
 # ---- Accessor functions ----
 
-#' Extract the data component
-#' @param x An estimates_vcov object
+#' Extract estimates from prepped fits or estimates_vcov object
+#'
+#' @description
+#' Generic function to extract estimates. Works with both:
+#' - `prepped_fits` tibbles (unnests tidy_obj)
+#' - `estimates_vcov` objects (extracts $estimates)
+#'
+#' @param x Either a prepped_fits tibble or an estimates_vcov object
+#' @param ... Additional arguments passed to methods
+#' 
+#' @return A tibble of coefficient estimates
+#' 
+#' @examples
+#' \dontrun{
+#' library(estimatr)
+#' library(dplyr)
+#' 
+#' # Prep some fits
+#' dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
+#' prepped <- prep_fit(lm_robust(Y ~ Z, data = dat), term = "ZT1")
+#' 
+#' # Works on prepped_fits
+#' get_estimates_df(prepped)
+#' 
+#' # Also works on estimates_vcov objects
+#' ev <- as_estimates_vcov(prepped)
+#' get_estimates_df(ev)
+#' }
+#' 
+#' @importFrom dplyr select any_of
+#' @importFrom tidyr unnest
+#' @importFrom rlang abort
 #' @export
-get_data <- function(x) {
-  UseMethod("get_data")
+get_estimates_df <- function(x, ...) {
+  UseMethod("get_estimates_df")
 }
 
 #' @export
-get_data.estimates_vcov <- function(x) {
-  x$data
+get_estimates_df.data.frame <- function(x, ...) {
+  # Treat as prepped_fits - unnest tidy_obj
+  if (!is.data.frame(x)) {
+    rlang::abort("`x` must be a data frame or tibble.")
+  }
+
+  expected_cols <- c("tidy_obj")
+  has_tidy_col <- any(expected_cols %in% names(x))
+  if (!has_tidy_col) {
+    rlang::abort(
+      "Input must contain a list-column named `tidy_obj`.",
+      "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
+    )
+  }
+
+  x |>
+    dplyr::select(-dplyr::any_of(c("glance", "glance_obj", "vcov", "vcov_obj"))) |>
+    tidyr::unnest(cols = dplyr::any_of(c("tidy", "tidy_obj")))
 }
 
-#' Extract the vcov matrix
-#' @param x An estimates_vcov object
 #' @export
-get_vcov <- function(x) {
+get_estimates_df.estimates_vcov <- function(x, ...) {
+  x$estimates
+}
+
+#' Extract glance summary from prepped fits or estimates_vcov object
+#'
+#' @description
+#' Generic function to extract model-level summaries. Works with:
+#' - `prepped_fits` tibbles (unnests glance_obj)
+#' - `estimates_vcov` objects (not applicable - returns NULL with warning)
+#'
+#' @param x Either a prepped_fits tibble or an estimates_vcov object
+#' @param ... Additional arguments passed to methods
+#' 
+#' @return A tibble of model-level statistics (or NULL for estimates_vcov)
+#' 
+#' @examples
+#' \dontrun{
+#' library(estimatr)
+#' 
+#' dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
+#' prepped <- prep_fit(lm_robust(Y ~ Z, data = dat), term = "ZT1")
+#' 
+#' # Extract model summaries
+#' get_glance_df(prepped)
+#' }
+#' 
+#' @importFrom dplyr select any_of
+#' @importFrom tidyr unnest
+#' @importFrom rlang abort warn
+#' @export
+get_glance_df <- function(x, ...) {
+  UseMethod("get_glance_df")
+}
+
+#' @export
+get_glance_df.data.frame <- function(x, ...) {
+  # Treat as prepped_fits - unnest glance_obj
+  if (!is.data.frame(x)) {
+    rlang::abort("`x` must be a data frame or tibble.")
+  }
+
+  if (!"glance_obj" %in% names(x)) {
+    rlang::abort(
+      "Input must contain a list-column named `glance_obj`.",
+      "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
+    )
+  }
+
+  x |>
+    dplyr::select(-dplyr::any_of(c("tidy_obj", "vcov_obj"))) |>
+    tidyr::unnest("glance_obj")
+}
+
+#' @export
+get_glance_df.estimates_vcov <- function(x, ...) {
+  rlang::warn(
+    "glance information is not stored in estimates_vcov objects.",
+    "i" = "Extract glance from prepped_fits before creating estimates_vcov."
+  )
+  NULL
+}
+
+#' Extract variance-covariance matrix from prepped fits or estimates_vcov object
+#'
+#' @description
+#' Generic function to extract vcov matrix. Works with both:
+#' - `prepped_fits` tibbles (creates block-diagonal matrix)
+#' - `estimates_vcov` objects (extracts $vcov)
+#'
+#' @param x Either a prepped_fits tibble or an estimates_vcov object
+#' @param ... Additional arguments passed to methods
+#' 
+#' @return A variance-covariance matrix (block-diagonal for prepped_fits)
+#' 
+#' @examples
+#' \dontrun{
+#' library(estimatr)
+#' library(dplyr)
+#' 
+#' # Simulate two studies
+#' dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+#' dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+#' 
+#' prepped_fits <- bind_rows(
+#'   study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
+#'   study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+#'   .id = "study"
+#' )
+#' 
+#' # Get block-diagonal vcov from prepped_fits
+#' vcov_matrix <- get_vcov(prepped_fits)
+#' dim(vcov_matrix)  # 3x3 (1 from study1, 2 from study2)
+#' 
+#' # Also works on estimates_vcov
+#' ev <- as_estimates_vcov(prepped_fits)
+#' identical(get_vcov(ev), as.matrix(vcov_matrix))
+#' }
+#' 
+#' @importFrom dplyr pull
+#' @importFrom Matrix bdiag
+#' @importFrom rlang abort
+#' @export
+get_vcov <- function(x, ...) {
   UseMethod("get_vcov")
 }
 
 #' @export
-get_vcov.estimates_vcov <- function(x) {
+get_vcov.data.frame <- function(x, ...) {
+  # Treat as prepped_fits - create block diagonal
+  if (!is.data.frame(x)) {
+    rlang::abort("`x` must be a data frame or tibble.")
+  }
+
+  if (!"vcov_obj" %in% names(x)) {
+    rlang::abort(
+      "Input must contain a list-column named `vcov_obj`.",
+      "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
+    )
+  }
+
+  x |>
+    dplyr::pull(vcov_obj) |>
+    Matrix::bdiag()
+}
+
+#' @export
+get_vcov.estimates_vcov <- function(x, ...) {
   x$vcov
-}
-
-# ---- Vcov fixing helper ----
-
-#' Fix common numerical issues in variance-covariance matrices
-#'
-#' @description
-#' This helper function addresses common numerical issues that can occur in
-#' variance-covariance matrices, particularly floating-point errors that result
-#' in matrices that are not perfectly symmetric or positive semi-definite.
-#'
-#' @param vcov A variance-covariance matrix (or estimates_vcov object)
-#' @param method Method to use for fixing. Options:
-#'   - "symmetrize": Forces symmetry by averaging with transpose
-#'   - "near_psd": Projects to nearest positive semi-definite matrix
-#'   - "both": Applies both fixes (default)
-#' @param tol Tolerance for determining if a matrix is symmetric or PSD
-#'
-#' @return A fixed variance-covariance matrix (or estimates_vcov object with fixed vcov)
-#'
-#' @details
-#' Common issues this fixes:
-#' - Floating-point asymmetry: When vcov[i,j] ≠ vcov[j,i] due to numerical precision
-#' - Negative eigenvalues: Small negative eigenvalues due to numerical error
-#'
-#' The "near_psd" method uses eigenvalue decomposition and sets negative eigenvalues to zero.
-#'
-#' @examples
-#' \dontrun{
-#' # Fix a vcov matrix directly
-#' fixed_vcov <- fix_vcov(my_vcov_matrix)
-#'
-#' # Fix an estimates_vcov object
-#' ev_fixed <- fix_vcov(ev)
-#'
-#' # Just symmetrize
-#' fixed_vcov <- fix_vcov(my_vcov_matrix, method = "symmetrize")
-#' }
-#'
-#' @export
-fix_vcov <- function(vcov, method = c("both", "symmetrize", "near_psd"), tol = 1e-10) {
-  UseMethod("fix_vcov")
-}
-
-#' @export
-fix_vcov.matrix <- function(vcov, method = c("both", "symmetrize", "near_psd"), tol = 1e-10) {
-  method <- match.arg(method)
-  
-  if (method %in% c("symmetrize", "both")) {
-    # Force symmetry by averaging with transpose
-    vcov <- (vcov + t(vcov)) / 2
-  }
-  
-  if (method %in% c("near_psd", "both")) {
-    # Project to nearest positive semi-definite matrix
-    eig <- eigen(vcov, symmetric = TRUE)
-    
-    # Set negative eigenvalues to zero
-    eig$values[eig$values < tol] <- 0
-    
-    # Reconstruct matrix
-    vcov <- eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
-  }
-  
-  vcov
-}
-
-#' @export
-fix_vcov.estimates_vcov <- function(vcov, method = c("both", "symmetrize", "near_psd"), tol = 1e-10) {
-  method <- match.arg(method)
-  
-  # Fix the vcov matrix
-  fixed_vcov <- fix_vcov(vcov$vcov, method = method, tol = tol)
-  
-  # Return new estimates_vcov object with fixed vcov
-  new_estimates_vcov(vcov$data, fixed_vcov, vcov$row_map)
 }

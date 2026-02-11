@@ -13,8 +13,8 @@ as_estimates_vcov(prepped_fits_df)
 \value{
 An object of class \code{estimates_vcov} containing:
 \describe{
-\item{data}{A tibble of unnested coefficient estimates}
-\item{vcov}{A block-diagonal variance-covariance matrix}
+\item{estimates}{A tibble of unnested coefficient estimates with an \code{id} column}
+\item{vcov}{A block-diagonal variance-covariance matrix with rownames/colnames matching \code{id}}
 \item{row_map}{Integer vector tracking original row indices}
 }
 }
@@ -30,27 +30,31 @@ group, or manipulate estimates while keeping the vcov matrix in sync.
 library(estimatr)
 library(dplyr)
 
-# Fit models across groups
-prepped_fits <- dat |>
-  nest_by(study, country) |>
-  mutate(
-    fit = list(lm_robust(Y ~ Z, data = data)),
-    prep = list(prep_fit(fit, term = c("ZT1", "ZT2")))
-  ) |>
-  unnest(prep)
+# Simulate three multi-arm trials
+set.seed(123)
+dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
+
+# Estimate and prep
+prepped_fits <- bind_rows(
+  study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
+  study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+  study3 = prep_fit(lm_robust(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+  .id = "study"
+)
 
 # Create estimates_vcov object
 ev <- as_estimates_vcov(prepped_fits)
+ev
 
-# Now use with dplyr verbs
-ev |> filter(country == "USA")
+# Use dplyr verbs - vcov stays synchronized
+ev |> filter(study == "study2")
 ev |> arrange(estimate)
-ev |> mutate(abs_estimate = abs(estimate))
+ev |> mutate(se = std.error)
 
-# And with meta-analysis
-ev |>
-  filter(country == "USA") |>
-  rma_mv_helper(yi = estimate)
+# Meta-analysis with automatic vcov handling
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 }
 
 }

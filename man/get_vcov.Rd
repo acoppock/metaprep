@@ -2,13 +2,47 @@
 % Please edit documentation in R/estimates_vcov.R
 \name{get_vcov}
 \alias{get_vcov}
-\title{Extract the vcov matrix}
+\title{Extract variance-covariance matrix from prepped fits or estimates_vcov object}
 \usage{
-get_vcov(x)
+get_vcov(x, ...)
 }
 \arguments{
-\item{x}{An estimates_vcov object}
+\item{x}{Either a prepped_fits tibble or an estimates_vcov object}
+
+\item{...}{Additional arguments passed to methods}
+}
+\value{
+A variance-covariance matrix (block-diagonal for prepped_fits)
 }
 \description{
-Extract the vcov matrix
+Generic function to extract vcov matrix. Works with both:
+\itemize{
+\item \code{prepped_fits} tibbles (creates block-diagonal matrix)
+\item \code{estimates_vcov} objects (extracts $vcov)
+}
+}
+\examples{
+\dontrun{
+library(estimatr)
+library(dplyr)
+
+# Simulate two studies
+dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+
+prepped_fits <- bind_rows(
+  study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
+  study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+  .id = "study"
+)
+
+# Get block-diagonal vcov from prepped_fits
+vcov_matrix <- get_vcov(prepped_fits)
+dim(vcov_matrix)  # 3x3 (1 from study1, 2 from study2)
+
+# Also works on estimates_vcov
+ev <- as_estimates_vcov(prepped_fits)
+identical(get_vcov(ev), as.matrix(vcov_matrix))
+}
+
 }

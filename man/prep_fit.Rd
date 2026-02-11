@@ -4,20 +4,24 @@
 \alias{prep_fit}
 \title{Prepare a Model Fit Object for Tidy Extraction}
 \usage{
-prep_fit(fit, term)
+prep_fit(fit, term, handle_multivariate = TRUE)
 }
 \arguments{
-\item{fit}{A fitted model object (e.g., from \code{\link[estimatr:lm_robust]{estimatr::lm_robust()}} or \code{\link[stats:lm]{stats::lm()}}).}
+\item{fit}{A fitted model object with \code{tidy()}, \code{glance()}, and \code{vcov()} methods.}
 
 \item{term}{A character vector of term names or patterns to match within the model
-coefficients (e.g., \code{"ZT1"}, \code{"ZT2"}).}
+coefficients (e.g., \code{c("ZT1", "ZT2")}).}
+
+\item{handle_multivariate}{Logical. If \code{TRUE} (default), attempts to detect and
+handle multivariate models by creating term names in the format "outcome:term".
+Set to \code{FALSE} if you want to use the term names as-is from \code{tidy()}.}
 }
 \value{
 A tibble with one row and the following list-columns:
 \describe{
-\item{tidy}{A tibble of tidied coefficient estimates for the selected terms.}
-\item{glance}{A tibble of model-level summary statistics (from \code{\link[broom:reexports]{broom::glance()}}).}
-\item{vcov}{A numeric matrix of the variance-covariance subset corresponding to the selected terms.}
+\item{tidy_obj}{A tibble of tidied coefficient estimates for the selected terms.}
+\item{glance_obj}{A tibble of model-level summary statistics (from \code{\link[broom:reexports]{broom::glance()}}).}
+\item{vcov_obj}{A numeric matrix of the variance-covariance subset corresponding to the selected terms.}
 }
 }
 \description{
@@ -25,32 +29,46 @@ Extracts selected term-level information from a fitted model object,
 returning a tibble with list-columns containing the tidied coefficients,
 model summary, and corresponding variance-covariance matrix subset.
 
-This is particularly useful when working with multi-level treatments
-(e.g., factor variables) and when you want to extract only a subset of terms.
+This function works with any model that has \code{tidy()}, \code{glance()}, and
+\code{vcov()} methods defined. For multivariate models (multiple outcomes),
+the function will attempt to construct appropriate term names by combining
+outcome and term names.
 }
 \examples{
 \dontrun{
 library(estimatr)
 library(dplyr)
-library(broom)
-library(stringr)
 
-# Example data
+# Simulate multi-arm trial data
+set.seed(123)
 dat <- data.frame(
-  Y = rnorm(100),
-  Z = factor(sample(c("T0", "T1", "T2"), 100, TRUE)),
-  X = rnorm(100)
+  Y = rnorm(200),
+  Z = sample(c("T0", "T1", "T2"), 200, replace = TRUE)
 )
 
-# Fit robust linear model
-fit <- lm_robust(Y ~ Z + X, data = dat)
+# Estimate treatment effects
+fit <- lm_robust(Y ~ Z, data = dat)
 
-# Prepare only the Z-related terms
-prepped_fit <- prep_fit(fit, term = c("ZT1", "ZT2"))
+# Prep for meta-analysis (excludes intercept and keeps treatments)
+prepped <- prep_fit(fit, term = c("ZT1", "ZT2"))
+prepped
 
-prepped_fit
-prepped_fit$tidy[[1]]
-prepped_fit$vcov[[1]]
+# Works with standard lm too
+fit_lm <- lm(Y ~ Z, data = dat)
+prep_fit(fit_lm, term = c("ZT1", "ZT2"))
+
+# Combine multiple studies
+dat_study2 <- data.frame(Y = rnorm(150), Z = sample(c("T0", "T1", "T2"), 150, TRUE))
+fit2 <- lm_robust(Y ~ Z, data = dat_study2)
+
+prepped_fits <- bind_rows(
+  study1 = prep_fit(fit, term = c("ZT1", "ZT2")),
+  study2 = prep_fit(fit2, term = c("ZT1", "ZT2")),
+  .id = "study"
+)
+
+# Now ready for meta-analysis
+ev <- as_estimates_vcov(prepped_fits)
 }
 
 }
