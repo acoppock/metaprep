@@ -250,6 +250,11 @@ get_estimates_df <- function(x, ...) {
 }
 
 #' @export
+get_estimates_df.default <- function(x, ...) {
+  rlang::abort("`x` must be a data frame or tibble.")
+}
+
+#' @export
 get_estimates_df.data.frame <- function(x, ...) {
   # Treat as prepped_fits - unnest tidy_obj
   if (!is.data.frame(x)) {
@@ -304,6 +309,11 @@ get_estimates_df.estimates_vcov <- function(x, ...) {
 #' @export
 get_glance_df <- function(x, ...) {
   UseMethod("get_glance_df")
+}
+
+#' @export
+get_glance_df.default <- function(x, ...) {
+  rlang::abort("`x` must be a data frame or tibble.")
 }
 
 #' @export
@@ -376,6 +386,11 @@ get_glance_df.estimates_vcov <- function(x, ...) {
 #' @export
 get_vcov <- function(x, ...) {
   UseMethod("get_vcov")
+}
+
+#' @export
+get_vcov.default <- function(x, ...) {
+  rlang::abort("`x` must be a data frame or tibble.")
 }
 
 #' @export

@@ -79,7 +79,7 @@ prep_fit <- function(fit, term, handle_multivariate = TRUE) {
 
   # Try to get tidy, glance, and vcov - these should work for most models
   tidy_obj <- tryCatch(
-    broom::tidy(fit),
+    tibble::as_tibble(broom::tidy(fit)),
     error = function(e) {
       rlang::abort(
         "Could not extract tidy coefficients from model object.",

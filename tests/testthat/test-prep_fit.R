@@ -104,9 +104,20 @@ test_that("prep_fit warns when glance method missing", {
 })
 
 test_that("prep_fit handles missing vcov method gracefully", {
-  # Create object without vcov method
-  bad_fit <- structure(list(), class = "no_vcov_class")
-  
+  # Create object with tidy/glance methods but no vcov method
+  bad_fit <- structure(list(), class = "has_tidy_no_vcov")
+  tidy.has_tidy_no_vcov <<- function(x, ...) {
+    tibble::tibble(term = "x", estimate = 1, std.error = 0.1,
+                   statistic = 10, p.value = 0.001)
+  }
+  glance.has_tidy_no_vcov <<- function(x, ...) {
+    tibble::tibble(nobs = 100)
+  }
+  on.exit({
+    rm(tidy.has_tidy_no_vcov, envir = .GlobalEnv)
+    rm(glance.has_tidy_no_vcov, envir = .GlobalEnv)
+  })
+
   expect_error(
     prep_fit(bad_fit, term = "x"),
     "Could not extract vcov"

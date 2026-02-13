@@ -53,6 +53,36 @@ slice.estimates_vcov <- function(.data, ..., .preserve = FALSE) {
   new_estimates_vcov(sliced_estimates, new_vcov, row_map = kept_idx)
 }
 
+# ---- Slice_head ----
+#' @export
+#' @importFrom dplyr slice_head
+slice_head.estimates_vcov <- function(.data, ..., n, prop) {
+  sliced_estimates <- .data$estimates |>
+    dplyr::mutate(.orig_row = dplyr::row_number()) |>
+    dplyr::slice_head(..., n = n, prop = prop)
+
+  kept_idx <- sliced_estimates$.orig_row
+  new_vcov <- .data$vcov[kept_idx, kept_idx, drop = FALSE]
+  sliced_estimates <- dplyr::select(sliced_estimates, -.orig_row)
+
+  new_estimates_vcov(sliced_estimates, new_vcov, row_map = kept_idx)
+}
+
+# ---- Slice_tail ----
+#' @export
+#' @importFrom dplyr slice_tail
+slice_tail.estimates_vcov <- function(.data, ..., n, prop) {
+  sliced_estimates <- .data$estimates |>
+    dplyr::mutate(.orig_row = dplyr::row_number()) |>
+    dplyr::slice_tail(..., n = n, prop = prop)
+
+  kept_idx <- sliced_estimates$.orig_row
+  new_vcov <- .data$vcov[kept_idx, kept_idx, drop = FALSE]
+  sliced_estimates <- dplyr::select(sliced_estimates, -.orig_row)
+
+  new_estimates_vcov(sliced_estimates, new_vcov, row_map = kept_idx)
+}
+
 # ---- Arrange ----
 #' @export
 #' @importFrom dplyr arrange
@@ -188,14 +218,14 @@ left_join.estimates_vcov <- function(x, y, by = NULL, copy = FALSE,
 
   # Check that we didn't lose or duplicate rows
   if (nrow(joined_estimates) != nrow(original_estimates)) {
-    rlang::abort(
+    rlang::abort(c(
       "left_join() changed the number of rows.",
       "i" = sprintf(
         "Original had %d rows, result has %d rows",
         nrow(original_estimates), nrow(joined_estimates)
       ),
       "i" = "This breaks vcov synchronization. Check your join keys or use multiple = 'first'/'last'."
-    )
+    ))
   }
 
   # Get the new row order
@@ -223,11 +253,11 @@ right_join.estimates_vcov <- function(x, y, by = NULL, copy = FALSE,
                                       keep = NULL, na_matches = c("na", "never"),
                                       multiple = "all", unmatched = "drop",
                                       relationship = NULL) {
-  rlang::abort(
+  rlang::abort(c(
     "right_join() is not supported for estimates_vcov objects.",
     "i" = "Use left_join(y, x) instead if you need right join behavior.",
     "i" = "right_join() would change which rows are kept, breaking vcov sync."
-  )
+  ))
 }
 
 #' @export
@@ -237,11 +267,11 @@ inner_join.estimates_vcov <- function(x, y, by = NULL, copy = FALSE,
                                       keep = NULL, na_matches = c("na", "never"),
                                       multiple = "all", unmatched = "drop",
                                       relationship = NULL) {
-  rlang::abort(
+  rlang::abort(c(
     "inner_join() is not supported for estimates_vcov objects.",
     "i" = "inner_join() can drop rows, which breaks vcov synchronization.",
     "i" = "Use filter() instead to remove rows explicitly."
-  )
+  ))
 }
 
 #' @export
@@ -251,11 +281,11 @@ full_join.estimates_vcov <- function(x, y, by = NULL, copy = FALSE,
                                      keep = NULL, na_matches = c("na", "never"),
                                      multiple = "all", unmatched = "drop",
                                      relationship = NULL) {
-  rlang::abort(
+  rlang::abort(c(
     "full_join() is not supported for estimates_vcov objects.",
     "i" = "full_join() can add rows, which breaks vcov synchronization.",
     "i" = "Use left_join() to add columns from y to x without adding rows."
-  )
+  ))
 }
 
 #' @export
