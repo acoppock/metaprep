@@ -14,9 +14,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-When meta-analyzing effect estimates obtained from multi-arm trials, we have to account for the dependence across estimates that arises when multiple treatment arms are compared to the same control group. The statistical methods for this have been worked out, as has an excellent software implementation in the `metafor` pacakge. In short, we can just pass a block-diaagonal variance-covariance matrix to the `rma` function that will appropriately account for this dependence.
+When meta-analyzing effect estimates obtained from multi-arm trials, we have to account for the dependence across estimates that arises when multiple treatment arms are compared to the same control group. The statistical methods for this have been worked out, as has an excellent software implementation in the `metafor` package. In short, we can pass a block-diagonal variance-covariance matrix to the `rma.mv()` function that will appropriately account for this dependence.
 
-The annoying part is making the block-diagonal variance covariance matrix. The `metaprep` package helps with this bit of bookkeeping.
+The annoying part is making the block-diagonal variance covariance matrix and keeping it synchronized with the estimates data frame. The `metaprep` package helps with this bookkeeping by providing an `estimates_vcov` object that keeps estimates and their variance-covariance matrix in sync through dplyr operations.
 
 ```{r setup, message=FALSE}
 set.seed(343)
@@ -75,7 +75,9 @@ fit_2 <- lm_robust(Y ~ Z, data = dat_2)
 fit_3 <- lm_robust(Y ~ Z, data = dat_3)
 ```
 
-Here comes the `metaprep` part:
+# Basic workflow: estimates_vcov objects
+
+Here comes the `metaprep` part. We prep each fit, bind them together, and create an `estimates_vcov` object:
 
 ```{r}
 prepped_fit_1 <- prep_fit(fit_1, term = c("ZT2"))
@@ -90,47 +92,160 @@ fits_df <-
     .id = "study"
   )
 
-estimates_df <-  get_estimates_df(fits_df)
-bdiag_vcov <- get_bdiag_vcov(fits_df)
+# Create an estimates_vcov object
+ev <- as_estimates_vcov(fits_df)
+ev
 ```
 
-Now we're ready to do meta-analysis
+The `estimates_vcov` object keeps the estimates and variance-covariance matrix synchronized. You can use dplyr verbs on it:
+
+```{r}
+# Filter keeps vcov in sync
+ev |> filter(study == "Study 2")
+
+# Mutate adds columns without affecting vcov
+ev |> mutate(abs_estimate = abs(estimate))
+
+# Arrange reorders both estimates and vcov
+ev |> arrange(desc(estimate))
+```
+
+Now we're ready to do meta-analysis using the convenient `rma_mv_helper()`:
 
 ```{r}
 meta_fit <- 
-  rma.mv(yi = estimate, V = bdiag_vcov, data = estimates_df) |> 
+  ev |> 
+  rma_mv_helper(yi = estimate, random = ~ 1 | id) |>
   robust(cluster = study, clubSandwich = TRUE)
+
 tidy(meta_fit)
 ```
 
-# What's going on 
+The `rma_mv_helper()` function is a convenience wrapper that automatically passes the estimates data frame and vcov matrix to `metafor::rma.mv()`. The `random = ~ 1 | id` argument specifies a random effect for each estimate (identified by the `id` column that `estimates_vcov` objects automatically include).
+
+# Alternative workflow: extract components separately
+
+If you prefer to work with the components separately, you can extract them:
+
+```{r}
+# Extract estimates data frame
+estimates_df <- get_estimates_df(fits_df)
+estimates_df
+
+# Extract block-diagonal vcov matrix
+vcov_matrix <- get_vcov(fits_df)
+vcov_matrix
+```
+
+These functions work on both the prepped fits data frame and on `estimates_vcov` objects:
+
+```{r}
+# Works on estimates_vcov objects too
+estimates_df <- get_estimates_df(ev)
+estimates_df
+vcov_matrix <- get_vcov(ev)
+vcov_matrix
+```
+
+You can also extract model-level summaries with `get_glance_df()`:
+
+```{r}
+glance_df <- get_glance_df(fits_df)
+glance_df
+```
+
+Then conduct meta-analysis the traditional way:
+
+```{r}
+meta_fit_traditional <- 
+  rma.mv(yi = estimate, V = vcov_matrix, data = estimates_df, random = ~ 1 | id) |> 
+  robust(cluster = study, clubSandwich = TRUE)
+
+tidy(meta_fit_traditional)
+```
+
+# Grouping and nesting workflows
+
+The `estimates_vcov` object supports `nest_by()` for grouped meta-analyses:
+
+```{r}
+# Add a grouping variable for demonstration
+ev_grouped <- ev |> 
+  mutate(arm_type = if_else(term %in% c("ZT2"), "Treatment 2", "Treatment 3or4"))
+
+# Nest by group and run separate meta-analyses
+grouped_results <- 
+  ev_grouped |>
+  nest_by(arm_type) |>
+  mutate(
+    meta_fit = list(rma_mv_helper(data, yi = estimate, random = ~ 1 | id)),
+    meta_results = list(tidy(meta_fit))
+  ) |>
+  unnest(meta_results)
+
+grouped_results |> 
+  select(arm_type, estimate, std.error, p.value)
+```
+
+# What's going on under the hood
 
 If you're interested, here's what's happening in these functions.
 
-`prep_fit` conducts three post-estimation functions on the regression fit, `tidy`, `glance`, and `vcov`. It subsets the rows of the `tidy_object` and the rows and columns of the `vcov_object` to the "terms" that are at issue in the meta-analysis (i.e., in this case we're letting the intercept go. If the regressions adjusted for covariates, we could also let those go).  The resulting three objects are wrapped in a `tibble` where the cells are themselves data frames:
+`prep_fit()` conducts three post-estimation functions on the regression fit: `tidy()`, `glance()`, and `vcov()`. It subsets the rows of the tidy object and the rows and columns of the vcov object to the "terms" that are relevant for the meta-analysis. In this case we're excluding the intercept. If the regressions adjusted for covariates, we could also exclude those.
+
+The resulting three objects are wrapped in a tibble where the cells are themselves data frames:
 
 ```{r}
 prepped_fit_1
 ```
 
-We then bind all the prepped fits together with an id variable
+We then bind all the prepped fits together with an id variable:
 
 ```{r}
 fits_df
 ```
 
-The `get_estimates_df` function just extracts the estimates:
+The `get_estimates_df()` function extracts and unnests the estimates:
 
 ```{r}
 get_estimates_df(fits_df)
 ```
 
-and the `get_bdiag_vcov` function extracts each `vcov_obj` and puts them in a block-diagonal matrix
+And the `get_vcov()` function extracts each `vcov_obj` and combines them into a block-diagonal matrix:
 
 ```{r}
-get_bdiag_vcov(fits_df)
+get_vcov(fits_df)
 ```
 
+The `as_estimates_vcov()` function creates a special object that keeps these two components synchronized:
 
+```{r}
+ev <- as_estimates_vcov(fits_df)
+class(ev)
+```
 
+This object has an `id` column that links each row of estimates to the corresponding row/column of the vcov matrix:
 
+```{r}
+# The id column
+ev$estimates$id
+
+# Same ids on the vcov matrix
+rownames(ev$vcov)
+colnames(ev$vcov)
+```
+
+When you use dplyr verbs on an `estimates_vcov` object, both the estimates and vcov are updated together, maintaining synchronization:
+
+```{r}
+# Filter to just Study 2
+ev_study2 <- ev |> filter(study == "Study 2")
+
+# Estimates are filtered
+nrow(get_estimates_df(ev_study2))
+
+# And vcov is subset to match
+dim(get_vcov(ev_study2))
+```
+
+This synchronization is what makes the `estimates_vcov` object so useful for meta-analysis workflows involving filtering, grouping, and subsetting.
