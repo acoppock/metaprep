@@ -4,13 +4,17 @@
 \alias{prep_fit}
 \title{Prepare a Model Fit Object for Tidy Extraction}
 \usage{
-prep_fit(fit, term, handle_multivariate = TRUE)
+prep_fit(fit, term, match = c("exact", "regex"), handle_multivariate = TRUE)
 }
 \arguments{
 \item{fit}{A fitted model object with \code{tidy()}, \code{glance()}, and \code{vcov()} methods.}
 
-\item{term}{A character vector of term names or patterns to match within the model
-coefficients (e.g., \code{c("ZT1", "ZT2")}).}
+\item{term}{A character vector of term names or regex patterns to match within the
+model coefficients (e.g., \code{c("ZT1", "ZT2")}).}
+
+\item{match}{How to match \code{term} against coefficient names. \code{"exact"} (default)
+requires the term to match a coefficient name exactly. \code{"regex"} uses each element
+of \code{term} as a regular expression (the elements are collapsed with \code{|}).}
 
 \item{handle_multivariate}{Logical. If \code{TRUE} (default), attempts to detect and
 handle multivariate models by creating term names in the format "outcome:term".

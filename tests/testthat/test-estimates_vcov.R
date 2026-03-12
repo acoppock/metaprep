@@ -3,34 +3,6 @@
 
 library(testthat)
 library(metaprep)
-library(estimatr)
-library(dplyr)
-
-# ---- Test Fixtures ----
-
-make_test_data <- function(n = 100) {
-  data.frame(
-    Y = rnorm(n),
-    Z = factor(sample(c("T0", "T1", "T2"), n, TRUE)),
-    country = sample(c("USA", "UK"), n, TRUE),
-    study_type = sample(c("RCT", "observational"), n, TRUE)
-  )
-}
-
-make_test_prepped_fits <- function() {
-  dat <- make_test_data()
-  
-  fits <- dat |>
-    nest_by(country, study_type) |>
-    mutate(
-      fit_obj = list(lm_robust(Y ~ Z, data = data)),
-      prep_obj = list(prep_fit(fit_obj, term = c("ZT1", "ZT2")))
-    ) |>
-    unnest(prep_obj) |>
-    ungroup()
-  
-  fits
-}
 
 # ==============================================================================
 # Accessor Functions Tests (get_estimates_df, get_glance_df, get_vcov)

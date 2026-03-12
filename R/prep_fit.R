@@ -11,8 +11,11 @@
 #' outcome and term names.
 #'
 #' @param fit A fitted model object with `tidy()`, `glance()`, and `vcov()` methods.
-#' @param term A character vector of term names or patterns to match within the model
-#'   coefficients (e.g., `c("ZT1", "ZT2")`).
+#' @param term A character vector of term names or regex patterns to match within the
+#'   model coefficients (e.g., `c("ZT1", "ZT2")`).
+#' @param match How to match `term` against coefficient names. `"exact"` (default)
+#'   requires the term to match a coefficient name exactly. `"regex"` uses each element
+#'   of `term` as a regular expression (the elements are collapsed with `|`).
 #' @param handle_multivariate Logical. If `TRUE` (default), attempts to detect and
 #'   handle multivariate models by creating term names in the format "outcome:term".
 #'   Set to `FALSE` if you want to use the term names as-is from `tidy()`.
@@ -69,7 +72,8 @@
 #' @importFrom rlang abort warn
 #' @importFrom stats vcov
 #' @export
-prep_fit <- function(fit, term, handle_multivariate = TRUE) {
+prep_fit <- function(fit, term, match = c("exact", "regex"), handle_multivariate = TRUE) {
+  match <- match.arg(match)
   stopifnot(
     is.character(term),
     length(term) > 0,
@@ -170,15 +174,17 @@ prep_fit <- function(fit, term, handle_multivariate = TRUE) {
     }
   }
 
-  # Build regex pattern to match any of the requested terms
-  pattern <- paste(term, collapse = "|")
-
-  # Filter tidy output for matching terms
-  tidy_sel <- dplyr::filter(tidy_obj, stringr::str_detect(.data$term, pattern))
-
-  # Subset vcov to matching rows/columns
-  rows <- stringr::str_detect(rownames(vcov_obj), pattern)
-  cols <- stringr::str_detect(colnames(vcov_obj), pattern)
+  # Filter tidy output and subset vcov for matching terms
+  if (match == "exact") {
+    tidy_sel <- dplyr::filter(tidy_obj, .data$term %in% .env$term)
+    rows <- rownames(vcov_obj) %in% term
+    cols <- colnames(vcov_obj) %in% term
+  } else {
+    pattern <- paste(term, collapse = "|")
+    tidy_sel <- dplyr::filter(tidy_obj, stringr::str_detect(.data$term, pattern))
+    rows <- stringr::str_detect(rownames(vcov_obj), pattern)
+    cols <- stringr::str_detect(colnames(vcov_obj), pattern)
+  }
   vcov_sel <- vcov_obj[rows, cols, drop = FALSE]
 
   # Return a tibble with list columns

@@ -157,14 +157,34 @@ test_that("prep_fit can handle multiple terms", {
   expect_equal(dim(prepped$vcov_obj[[1]]), c(2, 2))
 })
 
-test_that("prep_fit uses regex matching for terms", {
+test_that("prep_fit exact match does not pick up partial matches", {
   dat <- make_test_data()
   fit <- lm_robust(Y ~ Z, data = dat)
-  
-  # Should match both ZT1 and ZT2 with "ZT" pattern
+
+  # "ZT" should not match "ZT1" or "ZT2" under exact matching
   prepped <- prep_fit(fit, term = "ZT")
-  
+  expect_equal(nrow(prepped$tidy_obj[[1]]), 0)
+
+  # "ZT1" should match only ZT1, not ZT2
+  prepped2 <- prep_fit(fit, term = "ZT1")
+  expect_equal(nrow(prepped2$tidy_obj[[1]]), 1)
+  expect_equal(prepped2$tidy_obj[[1]]$term, "ZT1")
+})
+
+test_that("prep_fit regex match picks up prefix patterns", {
+  dat <- make_test_data()
+  fit <- lm_robust(Y ~ Z, data = dat)
+
+  # "ZT" as regex should match both ZT1 and ZT2
+  prepped <- prep_fit(fit, term = "ZT", match = "regex")
   expect_equal(nrow(prepped$tidy_obj[[1]]), 2)
+})
+
+test_that("prep_fit validates match argument", {
+  dat <- make_test_data()
+  fit <- lm_robust(Y ~ Z, data = dat)
+
+  expect_error(prep_fit(fit, term = "ZT1", match = "partial"))
 })
 
 test_that("prep_fit preserves term order from tidy()", {
