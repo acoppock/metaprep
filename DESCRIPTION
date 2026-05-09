@@ -5,23 +5,30 @@ Version: 0.1.0
 Authors@R: c(person(
       given = "Alex",
       family = "Coppock",
-      email = "alex@example.com",
+      email = "acoppock@gmail.com",
       role = c("aut", "cre")))
 Description: Helper functions to prepare, extract, and inspect model fits
-    in a tidy, reproducible way.
+    in a tidy, reproducible way. Provides an estimates_vcov object that keeps
+    coefficient estimates and their variance-covariance matrix synchronized
+    through dplyr operations, which is useful for multi-arm meta-analysis
+    workflows using 'metafor'.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+Depends: R (>= 4.1.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
     broom,
     dplyr,
+    Matrix,
+    rlang,
     stringr,
     tibble,
-    purrr
-Suggests: 
+    tidyr
+Suggests:
+    estimatr,
     knitr,
+    metafor,
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

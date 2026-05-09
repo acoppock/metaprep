@@ -22,14 +22,9 @@ Generic function to extract model-level summaries. Works with:
 }
 }
 \examples{
-\dontrun{
-library(estimatr)
-
+set.seed(123)
 dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-prepped <- prep_fit(lm_robust(Y ~ Z, data = dat), term = "ZT1")
-
-# Extract model summaries
+prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
 get_glance_df(prepped)
-}
 
 }

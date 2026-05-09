@@ -22,20 +22,12 @@ Generic function to extract estimates. Works with both:
 }
 }
 \examples{
-\dontrun{
-library(estimatr)
-library(dplyr)
-
-# Prep some fits
+set.seed(123)
 dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-prepped <- prep_fit(lm_robust(Y ~ Z, data = dat), term = "ZT1")
-
-# Works on prepped_fits
+prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
 get_estimates_df(prepped)
 
-# Also works on estimates_vcov objects
 ev <- as_estimates_vcov(prepped)
 get_estimates_df(ev)
-}
 
 }

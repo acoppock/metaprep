@@ -98,9 +98,29 @@ test_that("prep_fit handles missing tidy method gracefully", {
   )
 })
 
-test_that("prep_fit warns when glance method missing", {
-  skip("Hard to test without creating custom class")
-  # This is tested implicitly when glance returns NA values
+test_that("prep_fit warns and continues when glance method fails", {
+  warn_fit <- structure(list(), class = "has_tidy_bad_glance")
+  tidy.has_tidy_bad_glance <<- function(x, ...) {
+    tibble::tibble(term = "x", estimate = 1.0, std.error = 0.1,
+                   statistic = 10.0, p.value = 0.001)
+  }
+  glance.has_tidy_bad_glance <<- function(x, ...) stop("no glance available")
+  vcov.has_tidy_bad_glance <<- function(x, ...) {
+    m <- matrix(0.01, 1, 1)
+    rownames(m) <- colnames(m) <- "x"
+    m
+  }
+  on.exit({
+    rm(tidy.has_tidy_bad_glance, glance.has_tidy_bad_glance,
+       vcov.has_tidy_bad_glance, envir = .GlobalEnv)
+  })
+
+  expect_warning(
+    result <- prep_fit(warn_fit, term = "x"),
+    "Could not extract glance"
+  )
+  expect_true(all(c("tidy_obj", "glance_obj", "vcov_obj") %in% names(result)))
+  expect_equal(nrow(result$tidy_obj[[1]]), 1)
 })
 
 test_that("prep_fit handles missing vcov method gracefully", {
@@ -190,9 +210,122 @@ test_that("prep_fit validates match argument", {
 test_that("prep_fit preserves term order from tidy()", {
   dat <- make_test_data()
   fit <- lm_robust(Y ~ Z, data = dat)
-  
+
   prepped <- prep_fit(fit, term = c("ZT2", "ZT1"))
-  
+
   # Should preserve order from tidy(), not from term argument
   expect_true("term" %in% names(prepped$tidy_obj[[1]]))
+})
+
+# ==============================================================================
+# Multivariate Model Tests (Method 1: lm_robust with multiple outcomes)
+# ==============================================================================
+
+test_that("prep_fit handles multivariate lm_robust (Method 1)", {
+  skip_if_not_installed("estimatr")
+  set.seed(42)
+  dat <- data.frame(
+    Y1 = rnorm(100),
+    Y2 = rnorm(100),
+    Z = factor(sample(c("T0", "T1"), 100, TRUE))
+  )
+  fit <- estimatr::lm_robust(cbind(Y1, Y2) ~ Z, data = dat)
+
+  expect_true(length(fit$outcome) > 1)
+
+  result <- suppressWarnings(prep_fit(fit, term = "ZT1", match = "regex"))
+  expect_true(all(c("tidy_obj", "glance_obj", "vcov_obj") %in% names(result)))
+  expect_equal(nrow(result$tidy_obj[[1]]), 2)
+  expect_true(all(grepl("ZT1", result$tidy_obj[[1]]$term)))
+  expect_equal(dim(result$vcov_obj[[1]]), c(2, 2))
+})
+
+test_that("prep_fit handles multivariate lm_robust with exact term match", {
+  skip_if_not_installed("estimatr")
+  set.seed(42)
+  dat <- data.frame(
+    Y1 = rnorm(100),
+    Y2 = rnorm(100),
+    Z = factor(sample(c("T0", "T1"), 100, TRUE))
+  )
+  fit <- estimatr::lm_robust(cbind(Y1, Y2) ~ Z, data = dat)
+
+  result <- suppressWarnings(prep_fit(fit, term = "Y1:ZT1", match = "exact"))
+  expect_equal(nrow(result$tidy_obj[[1]]), 1)
+  expect_equal(result$tidy_obj[[1]]$term, "Y1:ZT1")
+  expect_equal(dim(result$vcov_obj[[1]]), c(1, 1))
+})
+
+# ==============================================================================
+# Multivariate Model Tests (Method 2: tidy has "outcome" column)
+# ==============================================================================
+
+test_that("prep_fit handles models with outcome column in tidy (Method 2)", {
+  multi_out_fit <- structure(list(), class = "multi_outcome_tidy_model")
+  tidy.multi_outcome_tidy_model <<- function(x, ...) {
+    tibble::tibble(
+      outcome = rep(c("A", "B"), each = 2),
+      term = rep(c("(Intercept)", "treat"), 2),
+      estimate = c(0.1, 0.3, 0.2, 0.4),
+      std.error = rep(0.05, 4),
+      statistic = c(2, 6, 4, 8),
+      p.value = rep(0.05, 4)
+    )
+  }
+  vcov.multi_outcome_tidy_model <<- function(x, ...) {
+    terms <- paste0(rep(c("A", "B"), each = 2), ":", rep(c("(Intercept)", "treat"), 2))
+    m <- diag(4)
+    rownames(m) <- colnames(m) <- terms
+    m
+  }
+  glance.multi_outcome_tidy_model <<- function(x, ...) {
+    data.frame(nobs = 100L)
+  }
+  on.exit({
+    rm(tidy.multi_outcome_tidy_model, vcov.multi_outcome_tidy_model,
+       glance.multi_outcome_tidy_model, envir = .GlobalEnv)
+  })
+
+  result <- prep_fit(multi_out_fit, term = "A:treat", match = "exact")
+  expect_true(all(c("tidy_obj", "glance_obj", "vcov_obj") %in% names(result)))
+  expect_equal(nrow(result$tidy_obj[[1]]), 1)
+  expect_equal(result$tidy_obj[[1]]$term, "A:treat")
+  expect_equal(dim(result$vcov_obj[[1]]), c(1, 1))
+})
+
+# ==============================================================================
+# Multivariate Model Tests (Method 3: tidy has "response" column)
+# ==============================================================================
+
+test_that("prep_fit handles models with response column in tidy (Method 3)", {
+  multi_resp_fit <- structure(list(), class = "multi_response_tidy_model")
+  tidy.multi_response_tidy_model <<- function(x, ...) {
+    tibble::tibble(
+      response = rep(c("A", "B"), each = 2),
+      term = rep(c("(Intercept)", "treat"), 2),
+      estimate = c(0.1, 0.3, 0.2, 0.4),
+      std.error = rep(0.05, 4),
+      statistic = c(2, 6, 4, 8),
+      p.value = rep(0.05, 4)
+    )
+  }
+  vcov.multi_response_tidy_model <<- function(x, ...) {
+    terms <- paste0(rep(c("A", "B"), each = 2), ":", rep(c("(Intercept)", "treat"), 2))
+    m <- diag(4)
+    rownames(m) <- colnames(m) <- terms
+    m
+  }
+  glance.multi_response_tidy_model <<- function(x, ...) {
+    data.frame(nobs = 100L)
+  }
+  on.exit({
+    rm(tidy.multi_response_tidy_model, vcov.multi_response_tidy_model,
+       glance.multi_response_tidy_model, envir = .GlobalEnv)
+  })
+
+  result <- prep_fit(multi_resp_fit, term = "A:treat", match = "exact")
+  expect_true(all(c("tidy_obj", "glance_obj", "vcov_obj") %in% names(result)))
+  expect_equal(nrow(result$tidy_obj[[1]]), 1)
+  expect_equal(result$tidy_obj[[1]]$term, "A:treat")
+  expect_equal(dim(result$vcov_obj[[1]]), c(1, 1))
 })

@@ -27,33 +27,24 @@ estimates. If you have correlated estimates (e.g., from multi-arm trials),
 use \code{\link[=rma_mv_helper]{rma_mv_helper()}} instead to properly account for the correlation structure.
 }
 \examples{
-\dontrun{
-library(metafor)
-library(estimatr)
-library(dplyr)
+if (requireNamespace("metafor", quietly = TRUE)) {
+  set.seed(123)
+  dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+  dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
+  dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1"), 200, TRUE))
 
-# Simulate independent studies (no multi-arm trials)
-set.seed(123)
-dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1"), 200, TRUE))
+  prepped_fits <- dplyr::bind_rows(
+    study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
+    study2 = prep_fit(lm(Y ~ Z, data = dat2), term = "ZT1"),
+    study3 = prep_fit(lm(Y ~ Z, data = dat3), term = "ZT1"),
+    .id = "study"
+  )
+  ev <- as_estimates_vcov(prepped_fits)
 
-prepped_fits <- bind_rows(
-  study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
-  study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = "ZT1"),
-  study3 = prep_fit(lm_robust(Y ~ Z, data = dat3), term = "ZT1"),
-  .id = "study"
-)
-
-ev <- as_estimates_vcov(prepped_fits)
-
-# Simple univariate meta-analysis (assumes independence)
-ev |> rma_uni_helper(yi = estimate)
-
-# With moderators
-ev |>
-  mutate(large_study = study == "study3") |>
-  rma_uni_helper(yi = estimate, mods = ~ large_study)
+  ev |> rma_uni_helper(yi = estimate)
+  ev |>
+    dplyr::mutate(large_study = study == "study3") |>
+    rma_uni_helper(yi = estimate, mods = ~ large_study)
 }
 
 }

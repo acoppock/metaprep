@@ -14,65 +14,40 @@ knitr::opts_chunk$set(
 )
 ```
 
-When meta-analyzing effect estimates obtained from multi-arm trials, we have to account for the dependence across estimates that arises when multiple treatment arms are compared to the same control group. The statistical methods for this have been worked out, as has an excellent software implementation in the `metafor` package. In short, we can pass a block-diagonal variance-covariance matrix to the `rma.mv()` function that will appropriately account for this dependence.
+When meta-analyzing effect estimates obtained from multi-arm trials, we have to account for the dependence across estimates that arises when multiple treatment arms are compared to the same control group. The statistical methods for this have been worked out, as has an excellent software implementation in the `metafor` package. In short, we can pass a block-diagonal variance-covariance matrix to `rma.mv()` that appropriately accounts for this dependence.
 
-The annoying part is making the block-diagonal variance covariance matrix and keeping it synchronized with the estimates data frame. The `metaprep` package helps with this bookkeeping by providing an `estimates_vcov` object that keeps estimates and their variance-covariance matrix in sync through dplyr operations.
+The annoying part is making the block-diagonal variance-covariance matrix and keeping it synchronized with the estimates data frame. The `metaprep` package helps with this bookkeeping by providing an `estimates_vcov` object that keeps estimates and their variance-covariance matrix in sync through dplyr operations.
 
 ```{r setup, message=FALSE}
 set.seed(343)
-library(tidyverse) # because we always need the tidyverse
-library(randomizr) # to conduct random assignments
-library(estimatr) # to estimate treatment effects and vcov
-library(fabricatr)
-library(metaprep) # preparing the estimates for meta-analysis 
-library(metafor) # actually doing the meta-analysis
-library(clubSandwich) # correction for small number of clusters
+library(dplyr)
+library(metaprep)
 ```
 
 # Three experiments
 
-Let's make fake data for three experiments. All three have a binary outcome. The first one is small (N = 50) and has two arms. The second is a little bigger (N = 100) and has three arms. The third is the biggest (N = 200) and has four arms.
+Let's make fake data for three experiments. All three have a continuous outcome. The first is small (N = 50) with two arms. The second is larger (N = 100) with three arms. The third is the biggest (N = 200) with four arms.
 
 ```{r}
-dat_1 <- 
-  fabricate(
-    N = 50,
-    latent = rnorm(N),
-    Y_Z_T1 = rbinom(n = N, 1, prob = pnorm(latent)),
-    Y_Z_T2 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
-    Z = complete_ra(N = N, num_arms = 2),
-    Y = reveal_outcomes(Y ~ Z)
+make_trial_data <- function(n, n_arms) {
+  arms <- paste0("T", seq_len(n_arms))
+  data.frame(
+    Y = rnorm(n),
+    Z = factor(sample(arms, n, replace = TRUE), levels = arms)
   )
+}
 
-dat_2 <- 
-  fabricate(
-    N = 100,
-    latent = rnorm(N),
-    Y_Z_T1 = rbinom(n = N, 1, prob = pnorm(latent)),
-    Y_Z_T2 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
-    Y_Z_T3 = rbinom(n = N, 1, prob = pnorm(latent + 0.3)),
-    Z = complete_ra(N = N, num_arms = 3),
-    Y = reveal_outcomes(Y ~ Z)
-  )
-dat_3 <- 
-  fabricate(
-    N = 200,
-    latent = rnorm(N),
-    Y_Z_T1 = rbinom(n = N, 1, prob = pnorm(latent)),
-    Y_Z_T2 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
-    Y_Z_T3 = rbinom(n = N, 1, prob = pnorm(latent + 0.3)),
-    Y_Z_T4 = rbinom(n = N, 1, prob = pnorm(latent + 0.2)),
-    Z = complete_ra(N = N, num_arms = 4),
-    Y = reveal_outcomes(Y ~ Z)
-  )
+dat_1 <- make_trial_data(50, 2)
+dat_2 <- make_trial_data(100, 3)
+dat_3 <- make_trial_data(200, 4)
 ```
 
-Now we estimate treatment effects
+Now we estimate treatment effects:
 
 ```{r}
-fit_1 <- lm_robust(Y ~ Z, data = dat_1)
-fit_2 <- lm_robust(Y ~ Z, data = dat_2)
-fit_3 <- lm_robust(Y ~ Z, data = dat_3)
+fit_1 <- lm(Y ~ Z, data = dat_1)
+fit_2 <- lm(Y ~ Z, data = dat_2)
+fit_3 <- lm(Y ~ Z, data = dat_3)
 ```
 
 # Basic workflow: estimates_vcov objects
@@ -80,19 +55,17 @@ fit_3 <- lm_robust(Y ~ Z, data = dat_3)
 Here comes the `metaprep` part. We prep each fit, bind them together, and create an `estimates_vcov` object:
 
 ```{r}
-prepped_fit_1 <- prep_fit(fit_1, term = c("ZT2"))
+prepped_fit_1 <- prep_fit(fit_1, term = "ZT2")
 prepped_fit_2 <- prep_fit(fit_2, term = c("ZT2", "ZT3"))
 prepped_fit_3 <- prep_fit(fit_3, term = c("ZT2", "ZT3", "ZT4"))
 
-fits_df <-
-  bind_rows(
-    `Study 1` = prepped_fit_1,
-    `Study 2` = prepped_fit_2,
-    `Study 3` = prepped_fit_3,
-    .id = "study"
-  )
+fits_df <- bind_rows(
+  `Study 1` = prepped_fit_1,
+  `Study 2` = prepped_fit_2,
+  `Study 3` = prepped_fit_3,
+  .id = "study"
+)
 
-# Create an estimates_vcov object
 ev <- as_estimates_vcov(fits_df)
 ev
 ```
@@ -100,24 +73,17 @@ ev
 The `estimates_vcov` object keeps the estimates and variance-covariance matrix synchronized. You can use dplyr verbs on it:
 
 ```{r}
-# Filter keeps vcov in sync
 ev |> filter(study == "Study 2")
-
-# Mutate adds columns without affecting vcov
 ev |> mutate(abs_estimate = abs(estimate))
-
-# Arrange reorders both estimates and vcov
 ev |> arrange(desc(estimate))
 ```
 
-Now we're ready to do meta-analysis using the convenient `rma_mv_helper()`:
+Now we're ready to do meta-analysis using `rma_mv_helper()`:
 
-```{r}
-meta_fit <- 
-  ev |> 
-  rma_mv_helper(yi = estimate, random = ~ 1 | id) |>
-  robust(cluster = study, clubSandwich = TRUE)
-
+```{r eval=requireNamespace("metafor", quietly = TRUE)}
+library(metafor)
+library(broom)
+meta_fit <- ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 tidy(meta_fit)
 ```
 
@@ -128,11 +94,9 @@ The `rma_mv_helper()` function is a convenience wrapper that automatically passe
 If you prefer to work with the components separately, you can extract them:
 
 ```{r}
-# Extract estimates data frame
 estimates_df <- get_estimates_df(fits_df)
 estimates_df
 
-# Extract block-diagonal vcov matrix
 vcov_matrix <- get_vcov(fits_df)
 vcov_matrix
 ```
@@ -140,11 +104,8 @@ vcov_matrix
 These functions work on both the prepped fits data frame and on `estimates_vcov` objects:
 
 ```{r}
-# Works on estimates_vcov objects too
 estimates_df <- get_estimates_df(ev)
-estimates_df
 vcov_matrix <- get_vcov(ev)
-vcov_matrix
 ```
 
 You can also extract model-level summaries with `get_glance_df()`:
@@ -156,11 +117,10 @@ glance_df
 
 Then conduct meta-analysis the traditional way:
 
-```{r}
-meta_fit_traditional <- 
-  rma.mv(yi = estimate, V = vcov_matrix, data = estimates_df, random = ~ 1 | id) |> 
-  robust(cluster = study, clubSandwich = TRUE)
-
+```{r eval=requireNamespace("metafor", quietly = TRUE)}
+meta_fit_traditional <- rma.mv(
+  yi = estimate, V = vcov_matrix, data = estimates_df, random = ~ 1 | id
+)
 tidy(meta_fit_traditional)
 ```
 
@@ -168,30 +128,24 @@ tidy(meta_fit_traditional)
 
 The `estimates_vcov` object supports `nest_by()` for grouped meta-analyses:
 
-```{r}
-# Add a grouping variable for demonstration
-ev_grouped <- ev |> 
+```{r eval=requireNamespace("metafor", quietly = TRUE)}
+ev_grouped <- ev |>
   mutate(arm_type = if_else(term %in% c("ZT2"), "Treatment 2", "Treatment 3or4"))
 
-# Nest by group and run separate meta-analyses
-grouped_results <- 
-  ev_grouped |>
+grouped_results <- ev_grouped |>
   nest_by(arm_type) |>
   mutate(
     meta_fit = list(rma_mv_helper(data, yi = estimate, random = ~ 1 | id)),
     meta_results = list(tidy(meta_fit))
   ) |>
-  unnest(meta_results)
+  tidyr::unnest(meta_results)
 
-grouped_results |> 
-  select(arm_type, estimate, std.error, p.value)
+grouped_results |> select(arm_type, estimate, std.error, p.value)
 ```
 
 # What's going on under the hood
 
-If you're interested, here's what's happening in these functions.
-
-`prep_fit()` conducts three post-estimation functions on the regression fit: `tidy()`, `glance()`, and `vcov()`. It subsets the rows of the tidy object and the rows and columns of the vcov object to the "terms" that are relevant for the meta-analysis. In this case we're excluding the intercept. If the regressions adjusted for covariates, we could also exclude those.
+`prep_fit()` conducts three post-estimation operations on the regression fit: `tidy()`, `glance()`, and `vcov()`. It subsets the rows of the tidy object and the rows and columns of the vcov object to the terms relevant for the meta-analysis -- in this case excluding the intercept.
 
 The resulting three objects are wrapped in a tibble where the cells are themselves data frames:
 
@@ -227,25 +181,16 @@ class(ev)
 This object has an `id` column that links each row of estimates to the corresponding row/column of the vcov matrix:
 
 ```{r}
-# The id column
 ev$estimates$id
-
-# Same ids on the vcov matrix
 rownames(ev$vcov)
-colnames(ev$vcov)
 ```
 
-When you use dplyr verbs on an `estimates_vcov` object, both the estimates and vcov are updated together, maintaining synchronization:
+When you use dplyr verbs on an `estimates_vcov` object, both the estimates and vcov are updated together:
 
 ```{r}
-# Filter to just Study 2
 ev_study2 <- ev |> filter(study == "Study 2")
-
-# Estimates are filtered
 nrow(get_estimates_df(ev_study2))
-
-# And vcov is subset to match
 dim(get_vcov(ev_study2))
 ```
 
-This synchronization is what makes the `estimates_vcov` object so useful for meta-analysis workflows involving filtering, grouping, and subsetting.
+This synchronization is what makes the `estimates_vcov` object useful for meta-analysis workflows involving filtering, grouping, and subsetting.

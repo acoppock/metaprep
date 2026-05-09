@@ -25,16 +25,11 @@ This is useful if you've already called \code{\link[=get_estimates_df]{get_estim
 \code{\link[=get_vcov]{get_vcov()}} and want to combine them into a synchronized object.
 }
 \examples{
-\dontrun{
-# If you already have separate pieces
-estimates_df <- get_estimates_df(prepped_fits)
-vcov_matrix <- get_vcov(prepped_fits)
-
-# Combine them into an estimates_vcov object
-ev <- estimates_vcov_from_pieces(estimates_df, vcov_matrix)
-
-# Now you can use dplyr verbs with automatic vcov synchronization
-ev |> filter(country == "USA")
-}
+set.seed(123)
+dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
+prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
+estimates_df <- get_estimates_df(prepped)
+vcov_matrix <- as.matrix(get_vcov(prepped))
+estimates_vcov_from_pieces(estimates_df, vcov_matrix)
 
 }

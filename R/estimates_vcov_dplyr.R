@@ -107,14 +107,7 @@ arrange.estimates_vcov <- function(.data, ..., .by_group = FALSE) {
 #' @export
 #' @importFrom dplyr mutate
 mutate.estimates_vcov <- function(.data, ...) {
-  # Mutate doesn't change row count, so vcov stays the same
   new_estimates <- dplyr::mutate(.data$estimates, ...)
-
-  # Check that row count didn't change (shouldn't happen with mutate, but be safe)
-  if (nrow(new_estimates) != nrow(.data$estimates)) {
-    rlang::abort("mutate() changed the number of rows. This shouldn't happen!")
-  }
-
   new_estimates_vcov(new_estimates, .data$vcov, .data$row_map)
 }
 
@@ -228,22 +221,10 @@ left_join.estimates_vcov <- function(x, y, by = NULL, copy = FALSE,
     ))
   }
 
-  # Get the new row order
-  new_order <- joined_estimates$.orig_row
-
-  # Reorder vcov if needed
-  if (!identical(new_order, seq_along(new_order))) {
-    new_vcov <- x$vcov[new_order, new_order, drop = FALSE]
-    new_row_map <- x$row_map[new_order]
-  } else {
-    new_vcov <- x$vcov
-    new_row_map <- x$row_map
-  }
-
-  # Remove tracking column
+  # Remove tracking column -- left_join preserves left table row order
   joined_estimates <- dplyr::select(joined_estimates, -.orig_row)
 
-  new_estimates_vcov(joined_estimates, new_vcov, new_row_map)
+  new_estimates_vcov(joined_estimates, x$vcov, x$row_map)
 }
 
 #' @export

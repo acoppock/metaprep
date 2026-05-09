@@ -26,46 +26,25 @@ This function passes all arguments directly to \code{\link[metafor:rma.mv]{metaf
 handles the \code{data} and \code{V} arguments automatically.
 }
 \examples{
-\dontrun{
-library(metafor)
-library(estimatr)
-library(dplyr)
+if (requireNamespace("metafor", quietly = TRUE)) {
+  set.seed(123)
+  dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
+  dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+  dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
 
-# Simulate three multi-arm trials
-set.seed(123)
-dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
-dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
+  prepped_fits <- dplyr::bind_rows(
+    study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
+    study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+    study3 = prep_fit(lm(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+    .id = "study"
+  )
+  ev <- as_estimates_vcov(prepped_fits)
 
-# Prep and combine
-prepped_fits <- bind_rows(
-  study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
-  study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
-  study3 = prep_fit(lm_robust(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
-  .id = "study"
-)
-
-ev <- as_estimates_vcov(prepped_fits)
-
-# Simple meta-analysis with random effects
-ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
-
-# With moderators
-ev |> rma_mv_helper(yi = estimate, mods = ~ study, random = ~ 1 | id)
-
-# Filter then analyze
-ev |>
-  filter(study != "study1") |>
-  rma_mv_helper(yi = estimate, random = ~ 1 | id)
-
-# Grouped meta-analysis
-ev |>
-  mutate(arm = ifelse(term == "ZT1", "T1", "T2+")) |>
-  nest_by(arm) |>
-  mutate(
-    rma_fit = list(rma_mv_helper(data, yi = estimate, random = ~ 1 | id))
-  ) |>
-  reframe(broom::tidy(rma_fit))
+  ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
+  ev |> rma_mv_helper(yi = estimate, mods = ~ study, random = ~ 1 | id)
+  ev |>
+    dplyr::filter(study != "study1") |>
+    rma_mv_helper(yi = estimate, random = ~ 1 | id)
 }
 
 }

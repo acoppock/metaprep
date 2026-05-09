@@ -39,40 +39,26 @@ the function will attempt to construct appropriate term names by combining
 outcome and term names.
 }
 \examples{
-\dontrun{
-library(estimatr)
-library(dplyr)
-
-# Simulate multi-arm trial data
 set.seed(123)
 dat <- data.frame(
   Y = rnorm(200),
   Z = sample(c("T0", "T1", "T2"), 200, replace = TRUE)
 )
+fit <- lm(Y ~ Z, data = dat)
 
-# Estimate treatment effects
-fit <- lm_robust(Y ~ Z, data = dat)
+# Extract two treatment arms
+prep_fit(fit, term = c("ZT1", "ZT2"))
 
-# Prep for meta-analysis (excludes intercept and keeps treatments)
-prepped <- prep_fit(fit, term = c("ZT1", "ZT2"))
-prepped
+# Regex matching captures all ZT-prefixed terms at once
+prep_fit(fit, term = "ZT", match = "regex")
 
-# Works with standard lm too
-fit_lm <- lm(Y ~ Z, data = dat)
-prep_fit(fit_lm, term = c("ZT1", "ZT2"))
-
-# Combine multiple studies
-dat_study2 <- data.frame(Y = rnorm(150), Z = sample(c("T0", "T1", "T2"), 150, TRUE))
-fit2 <- lm_robust(Y ~ Z, data = dat_study2)
-
-prepped_fits <- bind_rows(
-  study1 = prep_fit(fit, term = c("ZT1", "ZT2")),
-  study2 = prep_fit(fit2, term = c("ZT1", "ZT2")),
+# Combine multiple studies and create an estimates_vcov object
+dat2 <- data.frame(Y = rnorm(150), Z = sample(c("T0", "T1", "T2"), 150, TRUE))
+prepped_fits <- dplyr::bind_rows(
+  study1 = prep_fit(lm(Y ~ Z, data = dat), term = c("ZT1", "ZT2")),
+  study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
   .id = "study"
 )
-
-# Now ready for meta-analysis
-ev <- as_estimates_vcov(prepped_fits)
-}
+as_estimates_vcov(prepped_fits)
 
 }

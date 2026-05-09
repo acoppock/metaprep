@@ -18,36 +18,24 @@
 #' }
 #'
 #' @examples
-#' \dontrun{
-#' library(estimatr)
-#' library(dplyr)
-#'
-#' # Simulate three multi-arm trials
 #' set.seed(123)
 #' dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
 #' dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
 #' dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
 #'
-#' # Estimate and prep
-#' prepped_fits <- bind_rows(
-#'   study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
-#'   study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
-#'   study3 = prep_fit(lm_robust(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+#' prepped_fits <- dplyr::bind_rows(
+#'   study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
+#'   study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+#'   study3 = prep_fit(lm(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
 #'   .id = "study"
 #' )
-#'
-#' # Create estimates_vcov object
 #' ev <- as_estimates_vcov(prepped_fits)
 #' ev
 #'
-#' # Use dplyr verbs - vcov stays synchronized
-#' ev |> filter(study == "study2")
-#' ev |> arrange(estimate)
-#' ev |> mutate(se = std.error)
-#'
-#' # Meta-analysis with automatic vcov handling
-#' ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
-#' }
+#' # dplyr verbs keep vcov synchronized
+#' ev |> dplyr::filter(study == "study2")
+#' ev |> dplyr::arrange(estimate)
+#' ev |> dplyr::mutate(se = std.error)
 #'
 #' @importFrom dplyr select pull
 #' @importFrom tidyr unnest
@@ -101,17 +89,12 @@ as_estimates_vcov <- function(prepped_fits_df) {
 #' @return An object of class `estimates_vcov`
 #'
 #' @examples
-#' \dontrun{
-#' # If you already have separate pieces
-#' estimates_df <- get_estimates_df(prepped_fits)
-#' vcov_matrix <- get_vcov(prepped_fits)
-#'
-#' # Combine them into an estimates_vcov object
-#' ev <- estimates_vcov_from_pieces(estimates_df, vcov_matrix)
-#'
-#' # Now you can use dplyr verbs with automatic vcov synchronization
-#' ev |> filter(country == "USA")
-#' }
+#' set.seed(123)
+#' dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
+#' prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
+#' estimates_df <- get_estimates_df(prepped)
+#' vcov_matrix <- as.matrix(get_vcov(prepped))
+#' estimates_vcov_from_pieces(estimates_df, vcov_matrix)
 #'
 #' @export
 estimates_vcov_from_pieces <- function(estimates_df, vcov_matrix) {
@@ -225,22 +208,14 @@ as_tibble.estimates_vcov <- function(x, ...) {
 #' @return A tibble of coefficient estimates
 #' 
 #' @examples
-#' \dontrun{
-#' library(estimatr)
-#' library(dplyr)
-#' 
-#' # Prep some fits
+#' set.seed(123)
 #' dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-#' prepped <- prep_fit(lm_robust(Y ~ Z, data = dat), term = "ZT1")
-#' 
-#' # Works on prepped_fits
+#' prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
 #' get_estimates_df(prepped)
-#' 
-#' # Also works on estimates_vcov objects
+#'
 #' ev <- as_estimates_vcov(prepped)
 #' get_estimates_df(ev)
-#' }
-#' 
+#'
 #' @importFrom dplyr select any_of
 #' @importFrom tidyr unnest
 #' @importFrom rlang abort
@@ -256,11 +231,6 @@ get_estimates_df.default <- function(x, ...) {
 
 #' @export
 get_estimates_df.data.frame <- function(x, ...) {
-  # Treat as prepped_fits - unnest tidy_obj
-  if (!is.data.frame(x)) {
-    rlang::abort("`x` must be a data frame or tibble.")
-  }
-
   expected_cols <- c("tidy_obj")
   has_tidy_col <- any(expected_cols %in% names(x))
   if (!has_tidy_col) {
@@ -293,16 +263,11 @@ get_estimates_df.estimates_vcov <- function(x, ...) {
 #' @return A tibble of model-level statistics (or NULL for estimates_vcov)
 #' 
 #' @examples
-#' \dontrun{
-#' library(estimatr)
-#' 
+#' set.seed(123)
 #' dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-#' prepped <- prep_fit(lm_robust(Y ~ Z, data = dat), term = "ZT1")
-#' 
-#' # Extract model summaries
+#' prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
 #' get_glance_df(prepped)
-#' }
-#' 
+#'
 #' @importFrom dplyr select any_of
 #' @importFrom tidyr unnest
 #' @importFrom rlang abort warn
@@ -318,11 +283,6 @@ get_glance_df.default <- function(x, ...) {
 
 #' @export
 get_glance_df.data.frame <- function(x, ...) {
-  # Treat as prepped_fits - unnest glance_obj
-  if (!is.data.frame(x)) {
-    rlang::abort("`x` must be a data frame or tibble.")
-  }
-
   if (!"glance_obj" %in% names(x)) {
     rlang::abort(
       "Input must contain a list-column named `glance_obj`.",
@@ -357,29 +317,21 @@ get_glance_df.estimates_vcov <- function(x, ...) {
 #' @return A variance-covariance matrix (block-diagonal for prepped_fits)
 #' 
 #' @examples
-#' \dontrun{
-#' library(estimatr)
-#' library(dplyr)
-#' 
-#' # Simulate two studies
+#' set.seed(123)
 #' dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
 #' dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
-#' 
-#' prepped_fits <- bind_rows(
-#'   study1 = prep_fit(lm_robust(Y ~ Z, data = dat1), term = "ZT1"),
-#'   study2 = prep_fit(lm_robust(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+#'
+#' prepped_fits <- dplyr::bind_rows(
+#'   study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
+#'   study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
 #'   .id = "study"
 #' )
-#' 
-#' # Get block-diagonal vcov from prepped_fits
 #' vcov_matrix <- get_vcov(prepped_fits)
-#' dim(vcov_matrix)  # 3x3 (1 from study1, 2 from study2)
-#' 
-#' # Also works on estimates_vcov
+#' dim(vcov_matrix)
+#'
 #' ev <- as_estimates_vcov(prepped_fits)
-#' identical(get_vcov(ev), as.matrix(vcov_matrix))
-#' }
-#' 
+#' get_vcov(ev)
+#'
 #' @importFrom dplyr pull
 #' @importFrom Matrix bdiag
 #' @importFrom rlang abort
@@ -395,11 +347,6 @@ get_vcov.default <- function(x, ...) {
 
 #' @export
 get_vcov.data.frame <- function(x, ...) {
-  # Treat as prepped_fits - create block diagonal
-  if (!is.data.frame(x)) {
-    rlang::abort("`x` must be a data frame or tibble.")
-  }
-
   if (!"vcov_obj" %in% names(x)) {
     rlang::abort(
       "Input must contain a list-column named `vcov_obj`.",
@@ -408,7 +355,7 @@ get_vcov.data.frame <- function(x, ...) {
   }
 
   x |>
-    dplyr::pull(vcov_obj) |>
+    dplyr::pull("vcov_obj") |>
     Matrix::bdiag()
 }
 

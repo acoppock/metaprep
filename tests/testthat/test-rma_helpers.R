@@ -89,8 +89,25 @@ test_that("rma_mv_helper evaluates yi in data context", {
 })
 
 test_that("rma_mv_helper errors without metafor", {
-  # Mock the namespace check
-  skip("Hard to test without unloading metafor")
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  testthat::with_mocked_bindings(
+    requireNamespace = function(package, ...) FALSE,
+    .package = "base",
+    expect_error(
+      rma_mv_helper(ev, yi = estimate),
+      "Package 'metafor' is required"
+    )
+  )
+})
+
+test_that("rma_mv_helper.list dispatches to estimates_vcov method", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- rma_mv_helper(list(ev), yi = estimate, random = ~ 1 | id)
+  expect_s3_class(result, "rma.mv")
 })
 
 test_that("rma_mv_helper.list errors on non-estimates_vcov list", {
@@ -189,13 +206,35 @@ test_that("rma_uni_helper works with filtered data", {
 
 test_that("rma_uni_helper.list errors on non-estimates_vcov list", {
   skip_if_not_installed("metafor")
-  
+
   bad_list <- list(data.frame(x = 1))
-  
+
   expect_error(
     rma_uni_helper(bad_list, yi = x),
     "does not contain an estimates_vcov object"
   )
+})
+
+test_that("rma_uni_helper errors without metafor", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  testthat::with_mocked_bindings(
+    requireNamespace = function(package, ...) FALSE,
+    .package = "base",
+    expect_error(
+      rma_uni_helper(ev, yi = estimate),
+      "Package 'metafor' is required"
+    )
+  )
+})
+
+test_that("rma_uni_helper.list dispatches to estimates_vcov method", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- rma_uni_helper(list(ev), yi = estimate)
+  expect_s3_class(result, "rma.uni")
 })
 
 # ==============================================================================
