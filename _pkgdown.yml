@@ -1,0 +1,52 @@
+url: https://acoppock.github.io/metaprep/
+
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#1f6f8b"
+
+home:
+  title: metaprep
+  description: >
+    Keep coefficient estimates and their variance-covariance matrix
+    synchronized through dplyr operations, for multi-arm meta-analysis
+    with metafor.
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [search, github]
+
+reference:
+- title: Preparing model fits
+  desc: Extract tidy estimates, model summaries, and vcov subsets from a fitted model.
+  contents:
+  - prep_fit
+
+- title: estimates_vcov objects
+  desc: >
+    Construct the synchronized estimates + vcov object and operate on it
+    with dplyr verbs.
+  contents:
+  - as_estimates_vcov
+  - estimates_vcov_from_pieces
+  - dplyr-methods
+
+- title: Extracting components
+  desc: Pull estimates, model-level summaries, or the vcov matrix back out.
+  contents:
+  - get_estimates_df
+  - get_glance_df
+  - get_vcov
+
+- title: Meta-analysis
+  desc: Convenience wrappers around metafor that read directly from an estimates_vcov object.
+  contents:
+  - rma_mv_helper
+  - rma_uni_helper
+
+articles:
+- title: Get started
+  navbar: ~
+  contents:
+  - multi-arm

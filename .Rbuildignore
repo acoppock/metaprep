@@ -5,3 +5,8 @@
 ^files$
 ^tests/files$
 ^\.claude$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^notes$
+^\.github$

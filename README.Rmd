@@ -16,39 +16,55 @@ knitr::opts_chunk$set(
 # metaprep
 
 <!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-The goal of metaprep is to ...
+Meta-analyzing effect estimates from multi-arm trials requires accounting for the dependence that arises when several treatment arms are compared to the same control group. The methods are well understood and `metafor::rma.mv()` implements them: you pass a block-diagonal variance-covariance matrix that encodes the dependence. The annoying part is building that matrix and keeping it synchronized with the estimates as you filter, group, and subset.
+
+`metaprep` handles the bookkeeping. It provides an `estimates_vcov` object that keeps coefficient estimates and their variance-covariance matrix in sync through dplyr operations, plus thin wrappers around `metafor` that read from it directly.
 
 ## Installation
 
-You can install the development version of metaprep like so:
+Install the development version from GitHub:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+# install.packages("remotes")
+remotes::install_github("acoppock/metaprep")
 ```
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+Prepare a fit from each trial, bind them together, and build a synchronized `estimates_vcov` object:
 
-```{r example}
+```{r example, message=FALSE}
+library(dplyr)
 library(metaprep)
-## basic example code
+
+set.seed(343)
+fit_1 <- lm(Y ~ Z, data = data.frame(Y = rnorm(50),  Z = sample(c("T0", "T1"), 50, TRUE)))
+fit_2 <- lm(Y ~ Z, data = data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE)))
+
+fits_df <- bind_rows(
+  `Study 1` = prep_fit(fit_1, term = "ZT1"),
+  `Study 2` = prep_fit(fit_2, term = c("ZT1", "ZT2")),
+  .id = "study"
+)
+
+ev <- as_estimates_vcov(fits_df)
+ev
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+dplyr verbs keep the vcov matrix in sync with the estimates:
 
-```{r cars}
-summary(cars)
+```{r}
+ev |> filter(study == "Study 2")
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+Meta-analyze with the `metafor` wrapper, which pulls the estimates and vcov from the object automatically:
 
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
+```{r meta, eval=requireNamespace("metafor", quietly = TRUE)}
+library(metafor)
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 ```
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+See `vignette("multi-arm")` for the full workflow, including component extraction, grouped meta-analyses, and what happens under the hood.
