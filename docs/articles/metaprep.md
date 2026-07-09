@@ -130,7 +130,7 @@ ev |> arrange(desc(estimate))
 ```
 
 Now we’re ready to do meta-analysis using
-[`rma_mv_helper()`](https://acoppock.github.io/metaprep/reference/rma_mv_helper.md):
+[`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md):
 
 ``` r
 
@@ -151,7 +151,7 @@ tidy(meta_fit)
 ```
 
 The
-[`rma_mv_helper()`](https://acoppock.github.io/metaprep/reference/rma_mv_helper.md)
+[`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)
 function is a convenience wrapper that automatically passes the
 estimates data frame and vcov matrix to
 [`metafor::rma.mv()`](https://wviechtb.github.io/metafor/reference/rma.mv.html).
@@ -200,7 +200,7 @@ vcov_matrix <- get_vcov(ev)
 ```
 
 You can also extract model-level summaries with
-[`get_glance_df()`](https://acoppock.github.io/metaprep/reference/get_glance_df.md):
+[`get_glance_df()`](https://alexandercoppock.com/metaprep/reference/get_glance_df.md):
 
 ``` r
 
@@ -259,7 +259,7 @@ grouped_results |> select(arm_type, estimate, std.error, p.value)
 
 ## What’s going on under the hood
 
-[`prep_fit()`](https://acoppock.github.io/metaprep/reference/prep_fit.md)
+[`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md)
 conducts three post-estimation operations on the regression fit:
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
 [`glance()`](https://generics.r-lib.org/reference/glance.html), and
@@ -293,7 +293,7 @@ fits_df
 ```
 
 The
-[`get_estimates_df()`](https://acoppock.github.io/metaprep/reference/get_estimates_df.md)
+[`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md)
 function extracts and unnests the estimates:
 
 ``` r
@@ -311,7 +311,7 @@ get_estimates_df(fits_df)
 ```
 
 And the
-[`get_vcov()`](https://acoppock.github.io/metaprep/reference/get_vcov.md)
+[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
 function extracts each `vcov_obj` and combines them into a
 block-diagonal matrix:
 
@@ -329,7 +329,7 @@ get_vcov(fits_df)
 ```
 
 The
-[`as_estimates_vcov()`](https://acoppock.github.io/metaprep/reference/as_estimates_vcov.md)
+[`as_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/as_estimates_vcov.md)
 function creates a special object that keeps these two components
 synchronized:
 

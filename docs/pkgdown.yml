@@ -2,8 +2,8 @@ pandoc: 3.9.0.2
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
-  multi-arm: multi-arm.html
-last_built: 2026-07-09T21:07Z
+  metaprep: metaprep.html
+last_built: 2026-07-09T21:51Z
 urls:
-  reference: https://acoppock.github.io/metaprep/reference
-  article: https://acoppock.github.io/metaprep/articles
+  reference: https://alexandercoppock.com/metaprep/reference
+  article: https://alexandercoppock.com/metaprep/articles

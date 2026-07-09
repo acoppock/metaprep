@@ -1,4 +1,4 @@
-url: https://acoppock.github.io/metaprep/
+url: https://alexandercoppock.com/metaprep/
 
 template:
   bootstrap: 5
@@ -14,7 +14,7 @@ home:
 
 navbar:
   structure:
-    left: [intro, reference, articles]
+    left: [intro, reference, articles, news]
     right: [search, github]
 
 reference:
@@ -44,9 +44,3 @@ reference:
   contents:
   - rma_mv_helper
   - rma_uni_helper
-
-articles:
-- title: Get started
-  navbar: ~
-  contents:
-  - multi-arm

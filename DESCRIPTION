@@ -13,7 +13,7 @@ Description: Helper functions to prepare, extract, and inspect model fits
     through dplyr operations, which is useful for multi-arm meta-analysis
     workflows using 'metafor'.
 License: MIT + file LICENSE
-URL: https://acoppock.github.io/metaprep/, https://github.com/acoppock/metaprep
+URL: https://alexandercoppock.com/metaprep/, https://github.com/acoppock/metaprep
 BugReports: https://github.com/acoppock/metaprep/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)

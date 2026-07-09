@@ -5,7 +5,7 @@
 Extract tidy estimates, model summaries, and vcov subsets from a fitted
 model.
 
-- [`prep_fit()`](https://acoppock.github.io/metaprep/reference/prep_fit.md)
+- [`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md)
   : Prepare a Model Fit Object for Tidy Extraction
 
 ## estimates_vcov objects
@@ -13,22 +13,22 @@ model.
 Construct the synchronized estimates + vcov object and operate on it
 with dplyr verbs.
 
-- [`as_estimates_vcov()`](https://acoppock.github.io/metaprep/reference/as_estimates_vcov.md)
+- [`as_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/as_estimates_vcov.md)
   : Create an estimates_vcov object
-- [`estimates_vcov_from_pieces()`](https://acoppock.github.io/metaprep/reference/estimates_vcov_from_pieces.md)
+- [`estimates_vcov_from_pieces()`](https://alexandercoppock.com/metaprep/reference/estimates_vcov_from_pieces.md)
   : Create estimates_vcov from separate estimates and vcov
-- [`dplyr-methods`](https://acoppock.github.io/metaprep/reference/dplyr-methods.md)
+- [`dplyr-methods`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md)
   : dplyr methods for estimates_vcov objects
 
 ## Extracting components
 
 Pull estimates, model-level summaries, or the vcov matrix back out.
 
-- [`get_estimates_df()`](https://acoppock.github.io/metaprep/reference/get_estimates_df.md)
+- [`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md)
   : Extract estimates from prepped fits or estimates_vcov object
-- [`get_glance_df()`](https://acoppock.github.io/metaprep/reference/get_glance_df.md)
+- [`get_glance_df()`](https://alexandercoppock.com/metaprep/reference/get_glance_df.md)
   : Extract glance summary from prepped fits or estimates_vcov object
-- [`get_vcov()`](https://acoppock.github.io/metaprep/reference/get_vcov.md)
+- [`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
   : Extract variance-covariance matrix from prepped fits or
   estimates_vcov object
 
@@ -37,7 +37,7 @@ Pull estimates, model-level summaries, or the vcov matrix back out.
 Convenience wrappers around metafor that read directly from an
 estimates_vcov object.
 
-- [`rma_mv_helper()`](https://acoppock.github.io/metaprep/reference/rma_mv_helper.md)
+- [`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)
   : Run rma.mv on an estimates_vcov object
-- [`rma_uni_helper()`](https://acoppock.github.io/metaprep/reference/rma_uni_helper.md)
+- [`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
   : Run rma.uni on an estimates_vcov object

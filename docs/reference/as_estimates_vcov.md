@@ -19,7 +19,7 @@ as_estimates_vcov(prepped_fits_df)
 - prepped_fits_df:
 
   A tibble created by combining one or more calls to
-  [`prep_fit()`](https://acoppock.github.io/metaprep/reference/prep_fit.md).
+  [`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md).
   Must include list-columns `tidy_obj` and `vcov_obj`.
 
 ## Value

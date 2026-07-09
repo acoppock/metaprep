@@ -8,7 +8,7 @@ estimates from an estimates_vcov object.
 Note: This function uses the diagonal of the vcov matrix as the variance
 estimates. If you have correlated estimates (e.g., from multi-arm
 trials), use
-[`rma_mv_helper()`](https://acoppock.github.io/metaprep/reference/rma_mv_helper.md)
+[`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)
 instead to properly account for the correlation structure.
 
 ## Usage

@@ -109,5 +109,5 @@ ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ```
 
-See `vignette("multi-arm")` for the full workflow, including component
+See `vignette("metaprep")` for the full workflow, including component
 extraction, grouped meta-analyses, and what happens under the hood.

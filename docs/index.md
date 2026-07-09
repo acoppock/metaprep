@@ -107,6 +107,6 @@ ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 ```
 
 See
-[`vignette("multi-arm")`](https://acoppock.github.io/metaprep/articles/multi-arm.md)
+[`vignette("metaprep")`](https://alexandercoppock.com/metaprep/articles/metaprep.md)
 for the full workflow, including component extraction, grouped
 meta-analyses, and what happens under the hood.

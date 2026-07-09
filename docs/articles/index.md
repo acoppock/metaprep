@@ -1,6 +1,6 @@
 # Articles
 
-### Get started
+### All vignettes
 
 - [Preparing multi-arm trials for
-  meta-analysis](https://acoppock.github.io/metaprep/articles/multi-arm.md):
+  meta-analysis](https://alexandercoppock.com/metaprep/articles/metaprep.md):

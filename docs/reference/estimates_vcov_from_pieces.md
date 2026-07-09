@@ -4,9 +4,9 @@ Alternative constructor for estimates_vcov objects when you already have
 the estimates data frame and block-diagonal vcov matrix separately.
 
 This is useful if you've already called
-[`get_estimates_df()`](https://acoppock.github.io/metaprep/reference/get_estimates_df.md)
+[`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md)
 and
-[`get_vcov()`](https://acoppock.github.io/metaprep/reference/get_vcov.md)
+[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
 and want to combine them into a synchronized object.
 
 ## Usage
@@ -20,12 +20,12 @@ estimates_vcov_from_pieces(estimates_df, vcov_matrix)
 - estimates_df:
 
   A data frame or tibble of coefficient estimates, typically from
-  [`get_estimates_df()`](https://acoppock.github.io/metaprep/reference/get_estimates_df.md).
+  [`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md).
 
 - vcov_matrix:
 
   A variance-covariance matrix, typically from
-  [`get_vcov()`](https://acoppock.github.io/metaprep/reference/get_vcov.md).
+  [`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md).
   Must have dimensions matching the number of rows in estimates_df.
 
 ## Value
