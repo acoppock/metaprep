@@ -13,9 +13,10 @@ rma_mv_helper(object, yi, V = NULL, cluster = NULL, clubSandwich = TRUE, ...)
 
 \item{V}{Variance-covariance matrix (defaults to the vcov from object)}
 
-\item{cluster}{Optional bare column name (evaluated in the estimates data
-frame, like \code{yi}) giving the clustering variable for cluster-robust
-(sandwich) standard errors. When supplied, the fit is passed to
+\item{cluster}{Optional clustering variable for cluster-robust (sandwich)
+standard errors. May be a bare column name of the estimates (e.g.
+\code{cluster = study}), a string-named column via \code{.data[[var]]}, or an
+external vector. When supplied, the fit is passed to
 \code{\link[metafor:robust]{metafor::robust()}}; when \code{NULL} (default) the ordinary model-based fit is
 returned.}
 

@@ -393,3 +393,33 @@ test_that("rma_uni_helper errors when a mods variable is absent from the object"
     "not found in the estimates"
   )
 })
+
+test_that("rma_mv_helper cluster = accepts a bare name, a string column, and an external vector", {
+  skip_if_not_installed("metafor")
+  skip_if_not_installed("clubSandwich")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  bare <- rma_mv_helper(ev, yi = estimate, random = ~ 1 | id, cluster = country)
+  strc <- rma_mv_helper(ev, yi = estimate, random = ~ 1 | id, cluster = .data[["country"]])
+  vec  <- ev$estimates$country
+  extv <- rma_mv_helper(ev, yi = estimate, random = ~ 1 | id, cluster = vec)
+
+  expect_s3_class(bare, "robust.rma")
+  expect_s3_class(strc, "robust.rma")
+  expect_s3_class(extv, "robust.rma")
+  # all three specify the same clustering, so SEs match
+  expect_equal(as.numeric(bare$se), as.numeric(strc$se))
+  expect_equal(as.numeric(bare$se), as.numeric(extv$se))
+})
+
+test_that("rma_mv_helper cluster = works inside a wrapper that passes a string-named column", {
+  skip_if_not_installed("metafor")
+  skip_if_not_installed("clubSandwich")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  pool <- function(x, cluster_var = "country") {
+    rma_mv_helper(x, yi = estimate, random = ~ 1 | id, cluster = x$estimates[[cluster_var]])
+  }
+  expect_s3_class(pool(ev), "robust.rma")
+})

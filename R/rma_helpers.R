@@ -48,16 +48,17 @@
 #'   ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id, cluster = study)
 #' }
 #'
-#' @param cluster Optional bare column name (evaluated in the estimates data
-#'   frame, like `yi`) giving the clustering variable for cluster-robust
-#'   (sandwich) standard errors. When supplied, the fit is passed to
+#' @param cluster Optional clustering variable for cluster-robust (sandwich)
+#'   standard errors. May be a bare column name of the estimates (e.g.
+#'   `cluster = study`), a string-named column via `.data[[var]]`, or an
+#'   external vector. When supplied, the fit is passed to
 #'   [metafor::robust()]; when `NULL` (default) the ordinary model-based fit is
 #'   returned.
 #' @param clubSandwich Logical, passed to [metafor::robust()] when `cluster` is
 #'   supplied. `TRUE` (default) requests CR2 cluster-robust standard errors via
 #'   the clubSandwich package; `FALSE` uses metafor's CR0 estimator.
 #'
-#' @importFrom rlang enexpr eval_tidy abort
+#' @importFrom rlang enexpr enquo eval_tidy abort
 #' @export
 rma_mv_helper <- function(object, yi, V = NULL, cluster = NULL,
                           clubSandwich = TRUE, ...) {
@@ -99,9 +100,9 @@ rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, cluster = NULL,
   )
 
   # Optionally wrap in cluster-robust standard errors
-  cluster_expr <- rlang::enexpr(cluster)
-  cluster_vec <- if (is.null(cluster_expr)) NULL else
-    rlang::eval_tidy(cluster_expr, data = estimates)
+  # enquo (not enexpr) captures the environment too, so `cluster` may be a bare
+  # column name, a string via `.data[[var]]`, or an external vector/variable.
+  cluster_vec <- rlang::eval_tidy(rlang::enquo(cluster), data = estimates)
   if (!is.null(cluster_vec)) {
     fit <- rma_robust(fit, cluster = cluster_vec, clubSandwich = clubSandwich)
   }
@@ -211,7 +212,7 @@ rma_robust <- function(fit, cluster, clubSandwich = TRUE) {
 #'   supplied. `TRUE` (default) requests CR2 standard errors via the
 #'   clubSandwich package; `FALSE` uses metafor's CR0 estimator.
 #'
-#' @importFrom rlang enexpr eval_tidy abort
+#' @importFrom rlang enexpr enquo eval_tidy abort
 #' @export
 rma_uni_helper <- function(object, yi, vi = NULL, cluster = NULL,
                            clubSandwich = TRUE, ...) {
@@ -253,9 +254,9 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
   )
 
   # Optionally wrap in cluster-robust standard errors
-  cluster_expr <- rlang::enexpr(cluster)
-  cluster_vec <- if (is.null(cluster_expr)) NULL else
-    rlang::eval_tidy(cluster_expr, data = estimates)
+  # enquo (not enexpr) captures the environment too, so `cluster` may be a bare
+  # column name, a string via `.data[[var]]`, or an external vector/variable.
+  cluster_vec <- rlang::eval_tidy(rlang::enquo(cluster), data = estimates)
   if (!is.null(cluster_vec)) {
     fit <- rma_robust(fit, cluster = cluster_vec, clubSandwich = clubSandwich)
   }

@@ -13,7 +13,7 @@ handles the data and V arguments automatically."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -69,9 +69,10 @@ handles the <code>data</code> and <code>V</code> arguments automatically.</p>
 
 
 <dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>
-<dd><p>Optional bare column name (evaluated in the estimates data
-frame, like <code>yi</code>) giving the clustering variable for cluster-robust
-(sandwich) standard errors. When supplied, the fit is passed to
+<dd><p>Optional clustering variable for cluster-robust (sandwich)
+standard errors. May be a bare column name of the estimates (e.g.
+<code>cluster = study</code>), a string-named column via <code>.data[[var]]</code>, or an
+external vector. When supplied, the fit is passed to
 <code><a href="https://wviechtb.github.io/metafor/reference/robust.html" class="external-link">metafor::robust()</a></code>; when <code>NULL</code> (default) the ordinary model-based fit is
 returned.</p></dd>
 
@@ -187,6 +188,9 @@ when <code>cluster</code> is supplied, a <code>robust.rma</code> object from <co
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"clubSandwich"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu">rma_mv_helper</span><span class="op">(</span>yi <span class="op">=</span> <span class="va">estimate</span>, random <span class="op">=</span> <span class="op">~</span> <span class="fl">1</span> <span class="op">|</span> <span class="va">id</span>, cluster <span class="op">=</span> <span class="va">study</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Registered S3 method overwritten by 'clubSandwich':</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   method    from    </span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   bread.mlm sandwich</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate Meta-Analysis Model (k = 6; method: REML)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

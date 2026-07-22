@@ -1,3 +1,11 @@
+# metaprep 0.2.1
+
+* The `cluster` argument of `rma_mv_helper()` and `rma_uni_helper()` now accepts
+  a bare column name, a string-named column via `.data[[var]]`, or an external
+  vector (previously only a bare column name worked). It is captured with
+  `rlang::enquo()`, so it composes inside wrapper functions that pass the
+  clustering variable programmatically.
+
 # metaprep 0.2.0
 
 * `rma_mv_helper()` and `rma_uni_helper()` gain a `cluster` argument (a bare
