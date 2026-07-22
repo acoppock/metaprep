@@ -22,19 +22,27 @@ Generic function to extract vcov matrix. Works with both:
 }
 }
 \examples{
-set.seed(123)
-dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+\dontshow{if (requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+library(dplyr)
+library(randomizr)
+library(estimatr)
 
-prepped_fits <- dplyr::bind_rows(
-  study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
-  study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+set.seed(123)
+dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+dat_2 <- data.frame(Z = complete_ra(100, num_arms = 3), Y = rnorm(100))
+
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+
+prepped_fits <- bind_rows(
+  study_1 = prep_fit(fit_1, term = "ZT2"),
+  study_2 = prep_fit(fit_2, term = c("ZT2", "ZT3")),
   .id = "study"
 )
-vcov_matrix <- get_vcov(prepped_fits)
-dim(vcov_matrix)
+# Block-diagonal vcov across studies, ready for metafor
+get_vcov(prepped_fits)
 
 ev <- as_estimates_vcov(prepped_fits)
-get_vcov(ev)
-
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
+\dontshow{\}) # examplesIf}
 }

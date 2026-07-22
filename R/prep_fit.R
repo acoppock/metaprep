@@ -28,28 +28,35 @@
 #'   \item{vcov_obj}{A numeric matrix of the variance-covariance subset corresponding to the selected terms.}
 #' }
 #'
-#' @examples
-#' set.seed(123)
-#' dat <- data.frame(
-#'   Y = rnorm(200),
-#'   Z = sample(c("T0", "T1", "T2"), 200, replace = TRUE)
-#' )
-#' fit <- lm(Y ~ Z, data = dat)
+#' @examplesIf requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
+#' library(dplyr)
+#' library(randomizr)
+#' library(estimatr)
 #'
-#' # Extract two treatment arms
-#' prep_fit(fit, term = c("ZT1", "ZT2"))
+#' set.seed(123)
+#' dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+#' dat_2 <- data.frame(Z = complete_ra(100, num_arms = 3), Y = rnorm(100))
+#' dat_3 <- data.frame(Z = complete_ra(200, num_arms = 4), Y = rnorm(200))
+#'
+#' fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+#' fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+#' fit_3 <- lm_robust(Y ~ Z, data = dat_3)
+#'
+#' # Extract the treatment arms from a fit
+#' prep_fit(fit_1, term = "ZT2")
 #'
 #' # Regex matching captures all ZT-prefixed terms at once
-#' prep_fit(fit, term = "ZT", match = "regex")
+#' prep_fit(fit_3, term = "ZT", match = "regex")
 #'
-#' # Combine multiple studies and create an estimates_vcov object
-#' dat2 <- data.frame(Y = rnorm(150), Z = sample(c("T0", "T1", "T2"), 150, TRUE))
-#' prepped_fits <- dplyr::bind_rows(
-#'   study1 = prep_fit(lm(Y ~ Z, data = dat), term = c("ZT1", "ZT2")),
-#'   study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+#' # Combine studies, build an estimates_vcov object, and meta-analyze
+#' prepped_fits <- bind_rows(
+#'   study_1 = prep_fit(fit_1, term = "ZT2"),
+#'   study_2 = prep_fit(fit_2, term = c("ZT2", "ZT3")),
+#'   study_3 = prep_fit(fit_3, term = c("ZT2", "ZT3", "ZT4")),
 #'   .id = "study"
 #' )
-#' as_estimates_vcov(prepped_fits)
+#' ev <- as_estimates_vcov(prepped_fits)
+#' ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #'
 #' @importFrom broom tidy glance
 #' @importFrom dplyr filter mutate

@@ -26,23 +26,34 @@ This is particularly useful for meta-analysis workflows where you need to filter
 group, or manipulate estimates while keeping the vcov matrix in sync.
 }
 \examples{
-set.seed(123)
-dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
-dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
+\dontshow{if (requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+library(dplyr)
+library(randomizr)
+library(estimatr)
 
-prepped_fits <- dplyr::bind_rows(
-  study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
-  study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
-  study3 = prep_fit(lm(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+set.seed(123)
+dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+dat_2 <- data.frame(Z = complete_ra(100, num_arms = 3), Y = rnorm(100))
+dat_3 <- data.frame(Z = complete_ra(200, num_arms = 4), Y = rnorm(200))
+
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+fit_3 <- lm_robust(Y ~ Z, data = dat_3)
+
+prepped_fits <- bind_rows(
+  study_1 = prep_fit(fit_1, term = "ZT2"),
+  study_2 = prep_fit(fit_2, term = c("ZT2", "ZT3")),
+  study_3 = prep_fit(fit_3, term = c("ZT2", "ZT3", "ZT4")),
   .id = "study"
 )
 ev <- as_estimates_vcov(prepped_fits)
 ev
 
-# dplyr verbs keep vcov synchronized
-ev |> dplyr::filter(study == "study2")
-ev |> dplyr::arrange(estimate)
-ev |> dplyr::mutate(se = std.error)
+# dplyr verbs keep the vcov synchronized
+ev |> filter(study == "study_2")
+ev |> arrange(estimate)
 
+# Pass straight to metafor via the helper
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
+\dontshow{\}) # examplesIf}
 }

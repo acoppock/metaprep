@@ -18,7 +18,6 @@ BugReports: https://github.com/acoppock/metaprep/issues
 Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Imports:
     broom,
     dplyr,
@@ -36,3 +35,4 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.0.0

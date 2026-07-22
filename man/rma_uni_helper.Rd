@@ -27,24 +27,31 @@ estimates. If you have correlated estimates (e.g., from multi-arm trials),
 use \code{\link[=rma_mv_helper]{rma_mv_helper()}} instead to properly account for the correlation structure.
 }
 \examples{
-if (requireNamespace("metafor", quietly = TRUE)) {
-  set.seed(123)
-  dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-  dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-  dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1"), 200, TRUE))
+\dontshow{if (requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+library(dplyr)
+library(randomizr)
+library(estimatr)
 
-  prepped_fits <- dplyr::bind_rows(
-    study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
-    study2 = prep_fit(lm(Y ~ Z, data = dat2), term = "ZT1"),
-    study3 = prep_fit(lm(Y ~ Z, data = dat3), term = "ZT1"),
-    .id = "study"
-  )
-  ev <- as_estimates_vcov(prepped_fits)
+set.seed(123)
+dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+dat_2 <- data.frame(Z = complete_ra(100, num_arms = 2), Y = rnorm(100))
+dat_3 <- data.frame(Z = complete_ra(200, num_arms = 2), Y = rnorm(200))
 
-  ev |> rma_uni_helper(yi = estimate)
-  ev |>
-    dplyr::mutate(large_study = study == "study3") |>
-    rma_uni_helper(yi = estimate, mods = ~ large_study)
-}
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+fit_3 <- lm_robust(Y ~ Z, data = dat_3)
 
+prepped_fits <- bind_rows(
+  study_1 = prep_fit(fit_1, term = "ZT2"),
+  study_2 = prep_fit(fit_2, term = "ZT2"),
+  study_3 = prep_fit(fit_3, term = "ZT2"),
+  .id = "study"
+)
+ev <- as_estimates_vcov(prepped_fits)
+
+ev |> rma_uni_helper(yi = estimate)
+ev |>
+  mutate(large_study = study == "study_3") |>
+  rma_uni_helper(yi = estimate, mods = ~ large_study)
+\dontshow{\}) # examplesIf}
 }

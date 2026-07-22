@@ -22,9 +22,14 @@ Generic function to extract model-level summaries. Works with:
 }
 }
 \examples{
-set.seed(123)
-dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
-get_glance_df(prepped)
+\dontshow{if (requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+library(randomizr)
+library(estimatr)
 
+set.seed(123)
+dat <- data.frame(Z = complete_ra(100, num_arms = 2), Y = rnorm(100))
+fit <- lm_robust(Y ~ Z, data = dat)
+prepped <- prep_fit(fit, term = "ZT2")
+get_glance_df(prepped)
+\dontshow{\}) # examplesIf}
 }

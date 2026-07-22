@@ -71,26 +71,51 @@ estimates_vcov objects (extracts $vcov)
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">dat1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">50</span><span class="op">)</span>, Z <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T0"</span>, <span class="st">"T1"</span><span class="op">)</span>, <span class="fl">50</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">dat2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, Z <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T0"</span>, <span class="st">"T1"</span>, <span class="st">"T2"</span><span class="op">)</span>, <span class="fl">100</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://declaredesign.org/r/randomizr/" class="external-link">randomizr</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://declaredesign.org/r/estimatr/" class="external-link">estimatr</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">prepped_fits</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  study1 <span class="op">=</span> <span class="fu"><a href="prep_fit.html">prep_fit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat1</span><span class="op">)</span>, term <span class="op">=</span> <span class="st">"ZT1"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  study2 <span class="op">=</span> <span class="fu"><a href="prep_fit.html">prep_fit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat2</span><span class="op">)</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT1"</span>, <span class="st">"ZT2"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Z <span class="op">=</span> <span class="fu"><a href="https://declaredesign.org/r/randomizr/reference/complete_ra.html" class="external-link">complete_ra</a></span><span class="op">(</span><span class="fl">50</span>, num_arms <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">50</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Z <span class="op">=</span> <span class="fu"><a href="https://declaredesign.org/r/randomizr/reference/complete_ra.html" class="external-link">complete_ra</a></span><span class="op">(</span><span class="fl">100</span>, num_arms <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>, Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">fit_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://declaredesign.org/r/estimatr/reference/lm_robust.html" class="external-link">lm_robust</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat_1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://declaredesign.org/r/estimatr/reference/lm_robust.html" class="external-link">lm_robust</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat_2</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">prepped_fits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  study_1 <span class="op">=</span> <span class="fu"><a href="prep_fit.html">prep_fit</a></span><span class="op">(</span><span class="va">fit_1</span>, term <span class="op">=</span> <span class="st">"ZT2"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  study_2 <span class="op">=</span> <span class="fu"><a href="prep_fit.html">prep_fit</a></span><span class="op">(</span><span class="va">fit_2</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT2"</span>, <span class="st">"ZT3"</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  .id <span class="op">=</span> <span class="st">"study"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">vcov_matrix</span> <span class="op">&lt;-</span> <span class="fu">get_vcov</span><span class="op">(</span><span class="va">prepped_fits</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">vcov_matrix</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3 3</span>
+<span class="r-in"><span><span class="co"># Block-diagonal vcov across studies, ready for metafor</span></span></span>
+<span class="r-in"><span><span class="fu">get_vcov</span><span class="op">(</span><span class="va">prepped_fits</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 x 3 sparse Matrix of class "dsCMatrix"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,] 0.0762514 .          .         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] .         0.07500602 0.03603387</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,] .         0.03603387 0.07251291</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="as_estimates_vcov.html">as_estimates_vcov</a></span><span class="op">(</span><span class="va">prepped_fits</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">get_vcov</span><span class="op">(</span><span class="va">ev</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            1          2          3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.07120511 0.00000000 0.00000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 0.00000000 0.05711795 0.02728021</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 0.00000000 0.02728021 0.05621377</span>
-<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu"><a href="rma_mv_helper.html">rma_mv_helper</a></span><span class="op">(</span>yi <span class="op">=</span> <span class="va">estimate</span>, random <span class="op">=</span> <span class="op">~</span> <span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate Meta-Analysis Model (k = 3; method: REML)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Variance Components:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             estim    sqrt  nlvls  fixed  factor </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma^2    0.0737  0.2716      3     no      id </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Test for Heterogeneity:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Q(df = 2) = 4.5405, p-val = 0.1033</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Model Results:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> estimate      se    zval    pval    ci.lb   ci.ub    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   0.0114  0.2386  0.0478  0.9619  -0.4563  0.4791    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

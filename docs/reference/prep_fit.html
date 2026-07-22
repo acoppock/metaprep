@@ -50,7 +50,7 @@ outcome and term names."></head><body>
     <p>Extracts selected term-level information from a fitted model object,
 returning a tibble with list-columns containing the tidied coefficients,
 model summary, and corresponding variance-covariance matrix subset.</p>
-<p>This function works with any model that has <code>tidy()</code>, <code>glance()</code>, and
+<p>This function works with any model that has <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>, and
 <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code> methods defined. For multivariate models (multiple outcomes),
 the function will attempt to construct appropriate term names by combining
 outcome and term names.</p>
@@ -66,7 +66,7 @@ outcome and term names.</p>
 
 
 <dl><dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
-<dd><p>A fitted model object with <code>tidy()</code>, <code>glance()</code>, and <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code> methods.</p></dd>
+<dd><p>A fitted model object with <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>, and <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code> methods.</p></dd>
 
 
 <dt id="arg-term">term<a class="anchor" aria-label="anchor" href="#arg-term"></a></dt>
@@ -83,7 +83,7 @@ of <code>term</code> as a regular expression (the elements are collapsed with <c
 <dt id="arg-handle-multivariate">handle_multivariate<a class="anchor" aria-label="anchor" href="#arg-handle-multivariate"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), attempts to detect and
 handle multivariate models by creating term names in the format "outcome:term".
-Set to <code>FALSE</code> if you want to use the term names as-is from <code>tidy()</code>.</p></dd>
+Set to <code>FALSE</code> if you want to use the term names as-is from <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -92,7 +92,7 @@ Set to <code>FALSE</code> if you want to use the term names as-is from <code>tid
 <dd><p>A tibble of tidied coefficient estimates for the selected terms.</p></dd>
 
 <dt>glance_obj</dt>
-<dd><p>A tibble of model-level summary statistics (from <code><a href="https://broom.tidymodels.org/reference/reexports.html" class="external-link">broom::glance()</a></code>).</p></dd>
+<dd><p>A tibble of model-level summary statistics (from <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">broom::glance()</a></code>).</p></dd>
 
 <dt>vcov_obj</dt>
 <dd><p>A numeric matrix of the variance-covariance subset corresponding to the selected terms.</p></dd>
@@ -102,46 +102,61 @@ Set to <code>FALSE</code> if you want to use the term names as-is from <code>tid
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">200</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  Z <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T0"</span>, <span class="st">"T1"</span>, <span class="st">"T2"</span><span class="op">)</span>, <span class="fl">200</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://declaredesign.org/r/randomizr/" class="external-link">randomizr</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://declaredesign.org/r/estimatr/" class="external-link">estimatr</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Extract two treatment arms</span></span></span>
-<span class="r-in"><span><span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT1"</span>, <span class="st">"ZT2"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Z <span class="op">=</span> <span class="fu"><a href="https://declaredesign.org/r/randomizr/reference/complete_ra.html" class="external-link">complete_ra</a></span><span class="op">(</span><span class="fl">50</span>, num_arms <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">50</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Z <span class="op">=</span> <span class="fu"><a href="https://declaredesign.org/r/randomizr/reference/complete_ra.html" class="external-link">complete_ra</a></span><span class="op">(</span><span class="fl">100</span>, num_arms <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>, Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Z <span class="op">=</span> <span class="fu"><a href="https://declaredesign.org/r/randomizr/reference/complete_ra.html" class="external-link">complete_ra</a></span><span class="op">(</span><span class="fl">200</span>, num_arms <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>, Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">200</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">fit_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://declaredesign.org/r/estimatr/reference/lm_robust.html" class="external-link">lm_robust</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat_1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://declaredesign.org/r/estimatr/reference/lm_robust.html" class="external-link">lm_robust</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat_2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://declaredesign.org/r/estimatr/reference/lm_robust.html" class="external-link">lm_robust</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat_3</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Extract the treatment arms from a fit</span></span></span>
+<span class="r-in"><span><span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit_1</span>, term <span class="op">=</span> <span class="st">"ZT2"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 3</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tidy_obj         glance_obj        vcov_obj     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">&lt;tibble [2 × 5]&gt;</span> <span style="color: #949494;">&lt;tibble [1 × 12]&gt;</span> <span style="color: #949494;">&lt;dbl [2 × 2]&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tidy_obj         glance_obj   vcov_obj     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">&lt;tibble [1 × 9]&gt;</span> <span style="color: #949494;">&lt;df [1 × 7]&gt;</span> <span style="color: #949494;">&lt;dbl [1 × 1]&gt;</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Regex matching captures all ZT-prefixed terms at once</span></span></span>
-<span class="r-in"><span><span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit</span>, term <span class="op">=</span> <span class="st">"ZT"</span>, match <span class="op">=</span> <span class="st">"regex"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit_3</span>, term <span class="op">=</span> <span class="st">"ZT"</span>, match <span class="op">=</span> <span class="st">"regex"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 3</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   tidy_obj         glance_obj        vcov_obj     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">&lt;tibble [2 × 5]&gt;</span> <span style="color: #949494;">&lt;tibble [1 × 12]&gt;</span> <span style="color: #949494;">&lt;dbl [2 × 2]&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   tidy_obj         glance_obj   vcov_obj     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> <span style="color: #949494;">&lt;tibble [3 × 9]&gt;</span> <span style="color: #949494;">&lt;df [1 × 7]&gt;</span> <span style="color: #949494;">&lt;dbl [3 × 3]&gt;</span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Combine multiple studies and create an estimates_vcov object</span></span></span>
-<span class="r-in"><span><span class="va">dat2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">150</span><span class="op">)</span>, Z <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T0"</span>, <span class="st">"T1"</span>, <span class="st">"T2"</span><span class="op">)</span>, <span class="fl">150</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">prepped_fits</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  study1 <span class="op">=</span> <span class="fu">prep_fit</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat</span><span class="op">)</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT1"</span>, <span class="st">"ZT2"</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  study2 <span class="op">=</span> <span class="fu">prep_fit</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, data <span class="op">=</span> <span class="va">dat2</span><span class="op">)</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT1"</span>, <span class="st">"ZT2"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span><span class="co"># Combine studies, build an estimates_vcov object, and meta-analyze</span></span></span>
+<span class="r-in"><span><span class="va">prepped_fits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  study_1 <span class="op">=</span> <span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit_1</span>, term <span class="op">=</span> <span class="st">"ZT2"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  study_2 <span class="op">=</span> <span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit_2</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT2"</span>, <span class="st">"ZT3"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  study_3 <span class="op">=</span> <span class="fu">prep_fit</span><span class="op">(</span><span class="va">fit_3</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT2"</span>, <span class="st">"ZT3"</span>, <span class="st">"ZT4"</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  .id <span class="op">=</span> <span class="st">"study"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="as_estimates_vcov.html">as_estimates_vcov</a></span><span class="op">(</span><span class="va">prepped_fits</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;estimates_vcov&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> # 4 estimates with 4x4 vcov matrix</span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="as_estimates_vcov.html">as_estimates_vcov</a></span><span class="op">(</span><span class="va">prepped_fits</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu"><a href="rma_mv_helper.html">rma_mv_helper</a></span><span class="op">(</span>yi <span class="op">=</span> <span class="va">estimate</span>, random <span class="op">=</span> <span class="op">~</span> <span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 4 × 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   id    study  term  estimate std.error statistic p.value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1     study1 ZT1    -<span style="color: #BB0000;">0.022</span><span style="color: #BB0000; text-decoration: underline;">7</span>     0.170    -<span style="color: #BB0000;">0.134</span>   0.894</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2     study1 ZT2     0.104      0.168     0.618   0.537</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3     study2 ZT1     0.056<span style="text-decoration: underline;">4</span>     0.213     0.265   0.792</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> 4     study2 ZT2     0.150      0.210     0.713   0.477</span>
-<span class="r-in"><span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Multivariate Meta-Analysis Model (k = 6; method: REML)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Variance Components:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>             estim    sqrt  nlvls  fixed  factor </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma^2    0.0000  0.0000      6     no      id </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Test for Heterogeneity:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Q(df = 5) = 4.6339, p-val = 0.4622</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Model Results:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> estimate      se     zval    pval    ci.lb   ci.ub    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -0.0479  0.1189  -0.4028  0.6871  -0.2808  0.1851    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
