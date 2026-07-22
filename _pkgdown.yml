@@ -30,6 +30,7 @@ reference:
   contents:
   - as_estimates_vcov
   - estimates_vcov_from_pieces
+  - bind_estimates_vcov
   - dplyr-methods
 
 - title: Extracting components

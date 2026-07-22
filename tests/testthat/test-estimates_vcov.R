@@ -334,3 +334,85 @@ test_that("row_map tracks original indices", {
   
   expect_equal(ev$row_map, seq_len(nrow(ev$estimates)))
 })
+
+# ==========================================================================
+# bind_estimates_vcov()
+# ==========================================================================
+
+make_ev_pair <- function() {
+  ev1 <- estimates_vcov_from_pieces(
+    data.frame(study = "a", term = "ZT2", estimate = 0.1),
+    matrix(0.0025, 1, 1)
+  )
+  ev2 <- estimates_vcov_from_pieces(
+    data.frame(study = "b", term = c("ZT2", "ZT3"), estimate = c(0.2, 0.3)),
+    matrix(c(0.0036, 0.001, 0.001, 0.0049), 2, 2)
+  )
+  list(ev1 = ev1, ev2 = ev2)
+}
+
+test_that("bind_estimates_vcov stacks estimates and block-diagonalizes vcov", {
+  p <- make_ev_pair()
+  combined <- bind_estimates_vcov(p$ev1, p$ev2)
+
+  expect_s3_class(combined, "estimates_vcov")
+  expect_equal(nrow(combined$estimates), 3)
+  expect_equal(dim(combined$vcov), c(3, 3))
+
+  # Zero covariance between the two objects
+  expect_equal(combined$vcov[1, 2], 0)
+  expect_equal(combined$vcov[1, 3], 0)
+
+  # Each original block is preserved on the diagonal
+  expect_equal(unname(combined$vcov[1, 1]), 0.0025)
+  expect_equal(unname(combined$vcov[2:3, 2:3]),
+               matrix(c(0.0036, 0.001, 0.001, 0.0049), 2, 2))
+
+  # id renumbered across the combined object
+  expect_equal(combined$estimates$id, as.character(1:3))
+})
+
+test_that("bind_estimates_vcov accepts a single list of objects", {
+  p <- make_ev_pair()
+  combined <- bind_estimates_vcov(list(p$ev1, p$ev2))
+  expect_equal(nrow(combined$estimates), 3)
+})
+
+test_that("bind_estimates_vcov returns a single object unchanged in dimension", {
+  p <- make_ev_pair()
+  out <- bind_estimates_vcov(p$ev1)
+  expect_equal(nrow(out$estimates), 1)
+})
+
+test_that("bind_estimates_vcov errors on non-estimates_vcov input", {
+  p <- make_ev_pair()
+  expect_error(bind_estimates_vcov(p$ev1, data.frame(x = 1)),
+               "must be estimates_vcov")
+})
+
+test_that("bind_estimates_vcov output pools via rma_mv_helper", {
+  skip_if_not_installed("metafor")
+  p <- make_ev_pair()
+  combined <- bind_estimates_vcov(p$ev1, p$ev2)
+  fit <- rma_mv_helper(combined, yi = estimate, random = ~ 1 | id)
+  expect_s3_class(fit, "rma.mv")
+})
+
+# ==========================================================================
+# vcov symmetry guard
+# ==========================================================================
+
+test_that("estimates_vcov_from_pieces errors on a genuinely asymmetric vcov", {
+  V <- matrix(c(1, 0.5, 0.2, 1), 2, 2)  # V[2,1] = 0.5, V[1,2] = 0.2
+  expect_error(
+    estimates_vcov_from_pieces(data.frame(term = c("a", "b")), V),
+    "not symmetric"
+  )
+})
+
+test_that("estimates_vcov_from_pieces silently repairs floating-point asymmetry", {
+  V <- matrix(c(1, 0.5, 0.5, 1), 2, 2)
+  V[1, 2] <- V[1, 2] + 1e-14  # sub-tolerance noise
+  ev <- estimates_vcov_from_pieces(data.frame(term = c("a", "b")), V)
+  expect_true(isSymmetric(unname(ev$vcov)))
+})

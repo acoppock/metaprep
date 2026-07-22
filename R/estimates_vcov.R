@@ -78,6 +78,9 @@ as_estimates_vcov <- function(prepped_fits_df) {
     )
   }
 
+  # Repair floating-point asymmetry; error on anything larger (see symmetrize_vcov)
+  vcov <- symmetrize_vcov(vcov)
+
   new_estimates_vcov(estimates, vcov)
 }
 
@@ -147,6 +150,9 @@ estimates_vcov_from_pieces <- function(estimates_df, vcov_matrix) {
     )
   }
 
+  # Repair floating-point asymmetry; error on anything larger (see symmetrize_vcov)
+  vcov_matrix <- symmetrize_vcov(vcov_matrix)
+
   # Create the object
   new_estimates_vcov(estimates_df, vcov_matrix)
 }
@@ -185,6 +191,108 @@ new_estimates_vcov <- function(estimates, vcov, row_map = NULL) {
     ),
     class = "estimates_vcov"
   )
+}
+
+# Repair a vcov matrix's symmetry, or error if it is too asymmetric to be a
+# valid covariance matrix.
+#
+# Block-diagonal assembly (Matrix::bdiag) and sandwich variance estimators can
+# leave a vcov a few ulps off symmetric; that noise is averaged away silently.
+# Asymmetry beyond `tol` (relative to the matrix scale) is not floating-point
+# noise: it means the rows and columns are misaligned or a block is malformed,
+# which would make the meta-analysis silently wrong, so it errors instead.
+symmetrize_vcov <- function(vcov, tol = sqrt(.Machine$double.eps),
+                            call = rlang::caller_env()) {
+  if (length(vcov) == 0) {
+    return(vcov)
+  }
+  asym <- max(abs(vcov - t(vcov)))
+  scale <- max(abs(vcov))
+  if (scale > 0 && asym > tol * scale) {
+    rlang::abort(
+      c(
+        "`vcov` is not symmetric and cannot be a valid covariance matrix.",
+        "i" = sprintf("max|V - t(V)| = %.3g exceeds the tolerance %.3g (tol * max|V|).",
+                      asym, tol * scale),
+        "i" = "Check for misaligned rows/columns or a malformed vcov block in the input."
+      ),
+      call = call
+    )
+  }
+  (vcov + t(vcov)) / 2
+}
+
+#' Combine estimates_vcov objects
+#'
+#' @description
+#' Row-binds the estimates of two or more `estimates_vcov` objects and assembles
+#' their variance-covariance matrices into a single block-diagonal matrix, with
+#' zero covariance between objects. Use it when studies were prepared into
+#' separate `estimates_vcov` objects but should be meta-analyzed together.
+#'
+#' This is not a plain row-bind: the block-diagonal vcov is rebuilt so that it
+#' stays synchronized with the stacked estimates, and the `id` column is
+#' renumbered across the combined object.
+#'
+#' @param ... Two or more `estimates_vcov` objects, or a single list of them.
+#'
+#' @return A combined `estimates_vcov` object.
+#'
+#' @examplesIf requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
+#' library(dplyr)
+#' library(randomizr)
+#' library(estimatr)
+#'
+#' set.seed(123)
+#' dat_a <- data.frame(Z = complete_ra(80, num_arms = 2), Y = rnorm(80))
+#' dat_b <- data.frame(Z = complete_ra(120, num_arms = 3), Y = rnorm(120))
+#'
+#' ev_a <- as_estimates_vcov(bind_rows(
+#'   study_1 = prep_fit(lm_robust(Y ~ Z, dat_a), term = "ZT2"),
+#'   .id = "study"
+#' ))
+#' ev_b <- as_estimates_vcov(bind_rows(
+#'   study_2 = prep_fit(lm_robust(Y ~ Z, dat_b), term = c("ZT2", "ZT3")),
+#'   .id = "study"
+#' ))
+#'
+#' # One object, block-diagonal vcov, id renumbered 1..n
+#' bind_estimates_vcov(ev_a, ev_b)
+#'
+#' @importFrom dplyr bind_rows
+#' @importFrom Matrix bdiag
+#' @importFrom rlang abort
+#' @export
+bind_estimates_vcov <- function(...) {
+  objs <- list(...)
+  # Allow a single list of objects: bind_estimates_vcov(list(ev1, ev2))
+  if (length(objs) == 1 && is.list(objs[[1]]) &&
+      !inherits(objs[[1]], "estimates_vcov")) {
+    objs <- objs[[1]]
+  }
+
+  if (length(objs) == 0) {
+    rlang::abort("No `estimates_vcov` objects supplied.")
+  }
+  if (!all(vapply(objs, inherits, logical(1), "estimates_vcov"))) {
+    rlang::abort("All inputs to `bind_estimates_vcov()` must be estimates_vcov objects.")
+  }
+  if (length(objs) == 1) {
+    return(objs[[1]])
+  }
+
+  # Row-bind estimates, dropping the per-object id (renumbered in the constructor)
+  estimates <- dplyr::bind_rows(lapply(objs, function(o) {
+    e <- o$estimates
+    e[["id"]] <- NULL
+    e
+  }))
+
+  # Block-diagonal assembly: independent across objects (zero cross-covariance)
+  vcov <- as.matrix(Matrix::bdiag(lapply(objs, function(o) o$vcov)))
+  vcov <- symmetrize_vcov(vcov)
+
+  new_estimates_vcov(estimates, vcov)
 }
 
 #' @export

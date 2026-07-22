@@ -1,4 +1,4 @@
-# metaprep (development version)
+# metaprep 0.2.0
 
 * `rma_mv_helper()` and `rma_uni_helper()` gain a `cluster` argument (a bare
   column name evaluated in the estimates, like `yi`) and a `clubSandwich`
@@ -6,6 +6,12 @@
   [metafor::robust()], so `rma_mv_helper(ev, yi = estimate, random = ~ 1 | id,
   cluster = study)` returns CR2 cluster-robust standard errors in one step.
   Defaults are unchanged (`cluster = NULL` returns the ordinary fit).
+* New `bind_estimates_vcov()` combines two or more `estimates_vcov` objects into
+  one, stacking the estimates and assembling a block-diagonal vcov (zero
+  covariance between objects), with `id` renumbered across the result.
+* `as_estimates_vcov()` and `estimates_vcov_from_pieces()` now repair
+  floating-point asymmetry in the vcov and error on asymmetry beyond a relative
+  tolerance, which would indicate a malformed (non-covariance) matrix.
 
 # metaprep 0.1.0
 
