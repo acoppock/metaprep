@@ -11,8 +11,11 @@
 #' outcome and term names.
 #'
 #' @param fit A fitted model object with `tidy()`, `glance()`, and `vcov()` methods.
-#' @param term A character vector of term names or regex patterns to match within the
-#'   model coefficients (e.g., `c("ZT1", "ZT2")`).
+#' @param term Terms to keep from the model. Either a character vector of exact
+#'   term names (or regex patterns when `match = "regex"`), or a tidyselect
+#'   expression resolved against the model's term names, e.g. `starts_with("Z")`,
+#'   `matches("^Z_treated$")`, or `starts_with("Z_treated") & !contains(":")` to
+#'   take a treatment's main effect while dropping its interaction terms.
 #' @param match How to match `term` against coefficient names. `"exact"` (default)
 #'   requires the term to match a coefficient name exactly. `"regex"` uses each element
 #'   of `term` as a regular expression (the elements are collapsed with `|`).
@@ -48,6 +51,9 @@
 #' # Regex matching captures all ZT-prefixed terms at once
 #' prep_fit(fit_3, term = "ZT", match = "regex")
 #'
+#' # Or select terms with tidyselect (no hand-built coefficient-name vector)
+#' prep_fit(fit_3, starts_with("Z"))
+#'
 #' # Combine studies, build an estimates_vcov object, and meta-analyze
 #' prepped_fits <- bind_rows(
 #'   study_1 = prep_fit(fit_1, term = "ZT2"),
@@ -62,17 +68,32 @@
 #' @importFrom dplyr filter mutate
 #' @importFrom stringr str_detect
 #' @importFrom tibble tibble
-#' @importFrom rlang abort warn .data .env
+#' @importFrom rlang abort warn enquo eval_tidy set_names .data .env
+#' @importFrom tidyselect eval_select
 #' @importFrom stats vcov
 #' @export
 prep_fit <- function(fit, term, match = c("exact", "regex"), handle_multivariate = TRUE) {
   match <- match.arg(match)
   stopifnot(
-    is.character(term),
-    length(term) > 0,
     is.logical(handle_multivariate),
     length(handle_multivariate) == 1
   )
+
+  # `term` may be a character vector (exact names, or regex when match = "regex")
+  # or a tidyselect expression (starts_with(), matches(), &/!/-, ...) resolved
+  # against the model's term names.
+  term_quo <- rlang::enquo(term)
+  ts_expr <- structure(list(), class = "metaprep_tidyselect_expr")
+  term_val <- tryCatch(rlang::eval_tidy(term_quo), error = function(e) ts_expr)
+  use_tidyselect <- identical(term_val, ts_expr)
+  if (!use_tidyselect) {
+    if (!is.character(term_val) || length(term_val) == 0) {
+      rlang::abort(
+        "`term` must be a non-empty character vector or a tidyselect expression (e.g. starts_with(\"Z\"))."
+      )
+    }
+    term <- term_val
+  }
 
   # Try to get tidy, glance, and vcov - these should work for most models
   tidy_obj <- tryCatch(
@@ -168,7 +189,12 @@ prep_fit <- function(fit, term, match = c("exact", "regex"), handle_multivariate
   }
 
   # Filter tidy output and subset vcov for matching terms
-  if (match == "exact") {
+  if (use_tidyselect) {
+    selected <- names(tidyselect::eval_select(term_quo, rlang::set_names(tidy_obj$term)))
+    tidy_sel <- dplyr::filter(tidy_obj, .data$term %in% selected)
+    rows <- rownames(vcov_obj) %in% selected
+    cols <- colnames(vcov_obj) %in% selected
+  } else if (match == "exact") {
     tidy_sel <- dplyr::filter(tidy_obj, .data$term %in% .env$term)
     rows <- rownames(vcov_obj) %in% term
     cols <- colnames(vcov_obj) %in% term

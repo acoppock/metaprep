@@ -9,8 +9,11 @@ prep_fit(fit, term, match = c("exact", "regex"), handle_multivariate = TRUE)
 \arguments{
 \item{fit}{A fitted model object with \code{tidy()}, \code{glance()}, and \code{vcov()} methods.}
 
-\item{term}{A character vector of term names or regex patterns to match within the
-model coefficients (e.g., \code{c("ZT1", "ZT2")}).}
+\item{term}{Terms to keep from the model. Either a character vector of exact
+term names (or regex patterns when \code{match = "regex"}), or a tidyselect
+expression resolved against the model's term names, e.g. \code{starts_with("Z")},
+\code{matches("^Z_treated$")}, or \code{starts_with("Z_treated") & !contains(":")} to
+take a treatment's main effect while dropping its interaction terms.}
 
 \item{match}{How to match \code{term} against coefficient names. \code{"exact"} (default)
 requires the term to match a coefficient name exactly. \code{"regex"} uses each element
@@ -58,6 +61,9 @@ prep_fit(fit_1, term = "ZT2")
 
 # Regex matching captures all ZT-prefixed terms at once
 prep_fit(fit_3, term = "ZT", match = "regex")
+
+# Or select terms with tidyselect (no hand-built coefficient-name vector)
+prep_fit(fit_3, starts_with("Z"))
 
 # Combine studies, build an estimates_vcov object, and meta-analyze
 prepped_fits <- bind_rows(

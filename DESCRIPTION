@@ -1,7 +1,7 @@
 Package: metaprep
 Type: Package
 Title: Tools for Extracting and Checking Model Fits
-Version: 0.2.2
+Version: 0.2.3
 Authors@R: c(person(
       given = "Alex",
       family = "Coppock",
@@ -26,7 +26,8 @@ Imports:
     rlang,
     stringr,
     tibble,
-    tidyr
+    tidyr,
+    tidyselect
 Suggests:
     clubSandwich,
     estimatr,

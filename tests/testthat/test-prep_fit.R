@@ -67,12 +67,12 @@ test_that("prep_fit validates inputs", {
   
   expect_error(
     prep_fit(fit, term = NULL),
-    "is.character\\(term\\)"
+    "non-empty character vector or a tidyselect"
   )
-  
+
   expect_error(
     prep_fit(fit, term = character(0)),
-    "length\\(term\\) > 0"
+    "non-empty character vector or a tidyselect"
   )
 })
 
@@ -328,4 +328,33 @@ test_that("prep_fit handles models with response column in tidy (Method 3)", {
   expect_equal(nrow(result$tidy_obj[[1]]), 1)
   expect_equal(result$tidy_obj[[1]]$term, "A:treat")
   expect_equal(dim(result$vcov_obj[[1]]), c(1, 1))
+})
+
+test_that("prep_fit accepts tidyselect expressions for term", {
+  skip_if_not_installed("estimatr")
+  dat <- make_test_data()
+  fit <- estimatr::lm_robust(Y ~ Z, data = dat)   # ZT1, ZT2
+  p <- prep_fit(fit, tidyselect::starts_with("Z"))
+  expect_setequal(get_estimates_df(p)$term, c("ZT1", "ZT2"))
+  expect_equal(dim(get_vcov(p)), c(2, 2))
+})
+
+test_that("prep_fit tidyselect takes a main effect and drops lm_lin interactions", {
+  skip_if_not_installed("estimatr")
+  set.seed(1); n <- 200
+  d <- data.frame(Z_t = rbinom(n, 1, 0.5), X_c = scale(rnorm(n))[, 1])
+  d$Y <- 0.2 * d$Z_t + rnorm(n)
+  fit <- estimatr::lm_lin(Y ~ Z_t, covariates = ~ X_c, data = d)
+  a <- get_estimates_df(prep_fit(fit, tidyselect::matches("^Z_t$")))
+  b <- get_estimates_df(prep_fit(fit, tidyselect::starts_with("Z_t") & !tidyselect::contains(":")))
+  expect_equal(a$term, "Z_t")
+  expect_equal(b$term, "Z_t")
+})
+
+test_that("prep_fit character term stays backward compatible", {
+  skip_if_not_installed("estimatr")
+  dat <- make_test_data()
+  fit <- estimatr::lm_robust(Y ~ Z, data = dat)
+  expect_setequal(get_estimates_df(prep_fit(fit, c("ZT1", "ZT2")))$term, c("ZT1", "ZT2"))
+  expect_setequal(get_estimates_df(prep_fit(fit, "ZT", match = "regex"))$term, c("ZT1", "ZT2"))
 })

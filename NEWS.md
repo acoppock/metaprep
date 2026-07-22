@@ -1,3 +1,14 @@
+# metaprep 0.2.3
+
+* `prep_fit()`'s `term` argument now accepts tidyselect expressions matched
+  against the model's term names, e.g. `prep_fit(fit, starts_with("Z_party"))`,
+  so callers no longer hand-build a coefficient-name vector with
+  `grep(..., names(coef(fit)))`. A treatment's main effect can be taken while
+  dropping its interactions with tidyselect's own set algebra, e.g.
+  `matches("^Z_treated$")` or `starts_with("Z_treated") & !contains(":")`. A
+  character vector still works exactly as before (exact names, or regex with
+  `match = "regex"`).
+
 # metaprep 0.2.2
 
 * New `rescale_estimates_vcov()` sign-flips or rescales the estimates of an
