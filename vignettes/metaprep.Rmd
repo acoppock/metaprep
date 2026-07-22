@@ -28,20 +28,12 @@ library(metaprep)
 
 # Three experiments
 
-Let's make fake data for three experiments. All three have a continuous outcome. The first is small (N = 50) with two arms. The second is larger (N = 100) with three arms. The third is the biggest (N = 200) with four arms. We use `randomizr::complete_ra()` to assign the treatment arm `Z`, which performs complete random assignment across the arms.
+Let's make fake data for three experiments. All three have a continuous outcome. The first is small (N = 50) with two arms. The second is larger (N = 100) with three arms. The third is the biggest (N = 200) with four arms. We use `randomizr::complete_ra()` to assign the treatment arm `Z`, which performs complete random assignment and automatically labels the arms `T1`, `T2`, and so on.
 
 ```{r}
-make_trial_data <- function(n, n_arms) {
-  arms <- paste0("T", seq_len(n_arms))
-  data.frame(
-    Z = complete_ra(N = n, conditions = arms),
-    Y = rnorm(n)
-  )
-}
-
-dat_1 <- make_trial_data(50, 2)
-dat_2 <- make_trial_data(100, 3)
-dat_3 <- make_trial_data(200, 4)
+dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+dat_2 <- data.frame(Z = complete_ra(100, num_arms = 3), Y = rnorm(100))
+dat_3 <- data.frame(Z = complete_ra(200, num_arms = 4), Y = rnorm(200))
 ```
 
 Now we estimate treatment effects with `estimatr::lm_robust()`, which returns heteroskedasticity-robust standard errors:
