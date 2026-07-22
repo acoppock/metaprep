@@ -12,6 +12,11 @@
 * `as_estimates_vcov()` and `estimates_vcov_from_pieces()` now repair
   floating-point asymmetry in the vcov and error on asymmetry beyond a relative
   tolerance, which would indicate a malformed (non-covariance) matrix.
+* `rma_mv_helper()` and `rma_uni_helper()` now error if a `mods` formula
+  references a column that is not on the `estimates_vcov` object, so a moderator
+  that never made it onto the object fails loudly instead of silently producing
+  an empty meta-regression. The vignette gains sections on cluster-robust
+  standard errors and meta-regression.
 
 # metaprep 0.1.0
 

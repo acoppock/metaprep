@@ -87,6 +87,9 @@ rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, cluster = NULL,
   yi_expr <- rlang::enexpr(yi)
   yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
 
+  # Guard: a mods formula must reference columns on the object
+  check_mods_vars(list(...)[["mods"]], estimates)
+
   # Call rma.mv with the evaluated vector
   fit <- metafor::rma.mv(
     yi = yi_vec,
@@ -117,6 +120,30 @@ rma_mv_helper.list <- function(object, yi, V = NULL, cluster = NULL,
   } else {
     rlang::abort("List does not contain an estimates_vcov object")
   }
+}
+
+# Internal: a mods formula must reference columns that live on the
+# estimates_vcov object, so moderators added with mutate() stay aligned with the
+# block-diagonal vcov. Erroring here turns the silent "moderator lived only on a
+# detached get_estimates_df() frame" bug into an immediate, explicit failure.
+check_mods_vars <- function(mods, estimates, call = rlang::caller_env()) {
+  if (is.null(mods) || !inherits(mods, "formula")) {
+    return(invisible())
+  }
+  missing <- setdiff(all.vars(mods), names(estimates))
+  if (length(missing) > 0) {
+    rlang::abort(
+      c(
+        sprintf(
+          "Moderator variable%s not found in the estimates: %s.",
+          if (length(missing) > 1) "s" else "", paste(missing, collapse = ", ")
+        ),
+        "i" = "Add the moderator to the object with mutate() before meta-regressing, so it stays aligned with the vcov."
+      ),
+      call = call
+    )
+  }
+  invisible()
 }
 
 # Internal: wrap a fitted rma object in cluster-robust SEs, guarding the
@@ -213,6 +240,9 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
   # Capture yi expression and evaluate in estimates context
   yi_expr <- rlang::enexpr(yi)
   yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
+
+  # Guard: a mods formula must reference columns on the object
+  check_mods_vars(list(...)[["mods"]], estimates)
 
   # Call rma.uni with the evaluated vector
   fit <- metafor::rma.uni(

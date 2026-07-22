@@ -83,6 +83,41 @@ tidy(meta_fit)
 
 The `rma_mv_helper()` function is a convenience wrapper that automatically passes the estimates data frame and vcov matrix to `metafor::rma.mv()`. The `random = ~ 1 | id` argument specifies a random effect for each estimate (identified by the `id` column that `estimates_vcov` objects automatically include).
 
+# Cluster-robust standard errors
+
+Meta-analyses of multi-arm trials usually want standard errors clustered by study, since arms from the same study share variation the block-diagonal vcov does not capture. Pass a `cluster` column and `rma_mv_helper()` wraps the fit in `metafor::robust()` for you, so you get cluster-robust standard errors in one step:
+
+```{r eval=requireNamespace("metafor", quietly = TRUE) && requireNamespace("clubSandwich", quietly = TRUE)}
+ev |>
+  rma_mv_helper(yi = estimate, random = ~ 1 | id, cluster = study) |>
+  tidy(conf.int = TRUE)
+```
+
+`cluster = study` is evaluated in the estimates, exactly like `yi`. By default `clubSandwich = TRUE` requests CR2 standard errors; set it to `FALSE` for metafor's CR0 estimator.
+
+# Meta-regression with moderators
+
+To ask whether effects vary with a study-level or arm-level characteristic, add the moderator to the object with `mutate()` and pass it through `mods`. Keeping the moderator on the `estimates_vcov` object, rather than on a detached data frame, is what keeps it aligned with the vcov:
+
+```{r eval=requireNamespace("metafor", quietly = TRUE)}
+ev |>
+  mutate(big_study = study == "Study 3") |>
+  rma_mv_helper(yi = estimate, mods = ~ big_study, random = ~ 1 | id) |>
+  tidy(conf.int = TRUE)
+```
+
+If a `mods` formula names a column that is not on the object, `rma_mv_helper()` stops with an error instead of silently dropping the moderator, so a variable that never made it onto the object cannot quietly produce an empty regression.
+
+## Reading the pooled fit
+
+`rma_mv_helper()` returns a standard `metafor` object (or a `robust.rma` object when `cluster` is supplied), so `broom::tidy()` and `broom::glance()` read it directly, with no need to pull slots out by hand:
+
+```{r eval=requireNamespace("metafor", quietly = TRUE)}
+glance(meta_fit)
+```
+
+`glance()` gives the scalar model summary and, for `rma.uni` or structured `rma.mv` fits, the heterogeneity `tau^2`. For a multilevel `rma.mv` (for example `random = list(~ 1 | study, ~ 1 | id)`) the variance components live in `meta_fit$sigma2`, which `glance()` does not expand. That matches broom's convention for mixed models, where per-group variances are not folded into the one-row `glance()` summary.
+
 # Alternative workflow: extract components separately
 
 If you prefer to work with the components separately, you can extract them:

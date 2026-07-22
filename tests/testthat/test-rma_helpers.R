@@ -365,3 +365,31 @@ test_that("rma_mv and rma_uni give different results when appropriate", {
   expect_s3_class(result_mv, "rma.mv")
   expect_s3_class(result_uni, "rma.uni")
 })
+
+test_that("rma_mv_helper errors when a mods variable is absent from the object", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  # country IS on the object -> works
+  expect_s3_class(
+    rma_mv_helper(ev, yi = estimate, mods = ~ country, random = ~ 1 | id),
+    "rma.mv"
+  )
+  # not_a_column is NOT on the object -> explicit error, not a silent all-FALSE
+  expect_error(
+    rma_mv_helper(ev, yi = estimate, mods = ~ not_a_column, random = ~ 1 | id),
+    "not found in the estimates"
+  )
+})
+
+test_that("rma_uni_helper errors when a mods variable is absent from the object", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  expect_error(
+    rma_uni_helper(ev, yi = estimate, mods = ~ nope),
+    "not found in the estimates"
+  )
+})
