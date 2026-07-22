@@ -4,6 +4,8 @@
 ^README\.Rmd$
 ^files$
 ^tests/files$
+^tests/files\.zip$
+^cran-comments\.md$
 ^\.claude$
 ^_pkgdown\.yml$
 ^docs$

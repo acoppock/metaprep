@@ -16,6 +16,7 @@ License: MIT + file LICENSE
 URL: https://alexandercoppock.com/metaprep/, https://github.com/acoppock/metaprep
 BugReports: https://github.com/acoppock/metaprep/issues
 Encoding: UTF-8
+Language: en-US
 Depends: R (>= 4.1.0)
 Roxygen: list(markdown = TRUE)
 Imports:
