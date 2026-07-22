@@ -416,3 +416,57 @@ test_that("estimates_vcov_from_pieces silently repairs floating-point asymmetry"
   ev <- estimates_vcov_from_pieces(data.frame(term = c("a", "b")), V)
   expect_true(isSymmetric(unname(ev$vcov)))
 })
+
+# ==========================================================================
+# rescale_estimates_vcov()
+# ==========================================================================
+
+test_that("rescale_estimates_vcov full sign flip negates estimates and keeps vcov", {
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  r  <- rescale_estimates_vcov(ev, by = -1)
+
+  expect_equal(r$estimates$estimate, -ev$estimates$estimate)
+  expect_equal(r$estimates$std.error, ev$estimates$std.error)   # |-1| = 1
+  expect_equal(r$estimates$statistic, -ev$estimates$statistic)
+  # full flip: s_i * s_j = 1 everywhere, so vcov is unchanged
+  expect_equal(unname(r$vcov), unname(ev$vcov))
+  # confidence bounds negate and swap
+  expect_equal(r$estimates$conf.low,  -ev$estimates$conf.high)
+  expect_equal(r$estimates$conf.high, -ev$estimates$conf.low)
+})
+
+test_that("rescale_estimates_vcov partial flip updates cross-covariance signs", {
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  s  <- ifelse(seq_len(nrow(ev$estimates)) == 1, -1, 1)   # flip only row 1
+  r  <- rescale_estimates_vcov(ev, by = s)
+
+  expect_equal(unname(r$vcov), unname(ev$vcov * outer(s, s)))
+  # a cross-covariance from the flipped row to an unflipped partner is negated
+  expect_equal(r$vcov[1, 2], -ev$vcov[1, 2])
+  # diagonal (s_i^2 = 1) unchanged
+  expect_equal(diag(r$vcov), diag(ev$vcov))
+})
+
+test_that("rescale_estimates_vcov rescales units consistently", {
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  r  <- rescale_estimates_vcov(ev, by = 100)
+
+  expect_equal(r$estimates$estimate, 100 * ev$estimates$estimate)
+  expect_equal(r$estimates$std.error, 100 * ev$estimates$std.error)
+  expect_equal(unname(r$vcov), unname(ev$vcov) * 1e4)
+})
+
+test_that("rescale_estimates_vcov accepts an expression and pools via metafor", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  first <- ev$estimates$term[1]
+  r  <- rescale_estimates_vcov(ev, by = if_else(term == first, -1, 1))
+  expect_s3_class(r, "estimates_vcov")
+  expect_s3_class(rma_mv_helper(r, yi = estimate, random = ~ 1 | id), "rma.mv")
+})
+
+test_that("rescale_estimates_vcov validates its inputs", {
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  expect_error(rescale_estimates_vcov(ev, by = c(1, 2)), "length 1 or nrow")
+  expect_error(rescale_estimates_vcov(data.frame(x = 1), by = 1), "must be an estimates_vcov")
+})

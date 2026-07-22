@@ -172,6 +172,22 @@ grouped_results <- ev_grouped |>
 grouped_results |> select(arm_type, estimate, std.error, p.value)
 ```
 
+# Combining and transforming objects
+
+If you built several `estimates_vcov` objects separately, for example one per data source, `bind_estimates_vcov()` stacks them into one, assembling a block-diagonal vcov with zero covariance between objects:
+
+```{r}
+ev_a <- as_estimates_vcov(bind_rows(`Study 1` = prepped_fit_1, .id = "study"))
+ev_b <- as_estimates_vcov(bind_rows(`Study 2` = prepped_fit_2, `Study 3` = prepped_fit_3, .id = "study"))
+bind_estimates_vcov(ev_a, ev_b)
+```
+
+To change the sign or the units of the estimates, use `rescale_estimates_vcov()`, not `mutate()`. The dplyr methods keep the vcov row-aligned but do not transform it, so `mutate(estimate = -estimate)` would flip the estimates while leaving the covariances inconsistent. `rescale_estimates_vcov()` updates the vcov to match (\(V \mapsto \mathrm{diag}(s)\,V\,\mathrm{diag}(s)\)), which is what you want for a sign flip (`by = +1`/`-1`, including a partial flip of some arms only) or a unit change:
+
+```{r}
+ev |> rescale_estimates_vcov(by = 100)
+```
+
 # What's going on under the hood
 
 `prep_fit()` conducts three post-estimation operations on the regression fit: `tidy()`, `glance()`, and `vcov()`. It subsets the rows of the tidy object and the rows and columns of the vcov object to the terms relevant for the meta-analysis -- in this case excluding the intercept.

@@ -14,3 +14,12 @@ Supported operations:
 \item Grouping operation: \code{nest_by()} (returns rowwise tibble with nested estimates_vcov)
 }
 }
+\details{
+These methods keep the vcov \strong{row-aligned} (subsetting and reordering the rows
+also subset/reorder the matrix), but they never \strong{transform} the matrix. In
+particular \code{mutate()} can change the \emph{values} of a column without touching the
+vcov, so \code{mutate(estimate = -estimate)} (or any rescaling of \code{estimate}) leaves
+the vcov inconsistent with the estimates. To sign-flip or rescale estimates and
+keep the covariances valid, use \code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}}, which updates the
+vcov as \eqn{\mathrm{diag}(s)\, V\, \mathrm{diag}(s)}.
+}

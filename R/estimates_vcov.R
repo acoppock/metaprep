@@ -295,6 +295,79 @@ bind_estimates_vcov <- function(...) {
   new_estimates_vcov(estimates, vcov)
 }
 
+#' Sign-flip or rescale an estimates_vcov object
+#'
+#' @description
+#' Multiply each estimate by a per-row factor and update the variance-covariance
+#' matrix to match, keeping the object internally consistent. Use it to align the
+#' sign of estimates across studies (`by` of `+1` / `-1`) or to change units
+#' (e.g. `by = 100` for percentage points).
+#'
+#' This is the correct way to transform estimate *values*. The dplyr methods keep
+#' the vcov row-aligned (subsetting, reordering) but never transform it, so
+#' `mutate(estimate = -estimate)` would flip the estimates while leaving the vcov
+#' (and its cross-study covariances) inconsistent. `rescale_estimates_vcov()`
+#' applies \eqn{V \mapsto \mathrm{diag}(s)\, V\, \mathrm{diag}(s)}, so the
+#' covariances stay valid, including the sign of cross-covariances under a partial
+#' sign flip. `std.error`, `statistic`, and the confidence bounds are updated to
+#' match when present.
+#'
+#' @param ev An `estimates_vcov` object.
+#' @param by A per-estimate multiplier: a bare column name, an expression
+#'   evaluated in the estimates, or a numeric vector of length 1 (recycled) or
+#'   `nrow(estimates)`. Use `+1` / `-1` to flip signs, positive values to rescale.
+#'
+#' @return An `estimates_vcov` object with `estimate` (and `std.error`,
+#'   `statistic`, `conf.low`, `conf.high` when present) and the vcov rescaled.
+#'
+#' @examplesIf requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
+#' library(dplyr)
+#' library(randomizr)
+#' library(estimatr)
+#'
+#' set.seed(123)
+#' dat <- data.frame(Z = complete_ra(120, num_arms = 3), Y = rnorm(120))
+#' ev <- as_estimates_vcov(bind_rows(
+#'   study_1 = prep_fit(lm_robust(Y ~ Z, dat), term = c("ZT2", "ZT3")),
+#'   .id = "study"
+#' ))
+#'
+#' # Flip the sign of the first arm only; the cross-covariance sign updates too
+#' ev |> rescale_estimates_vcov(by = if_else(term == "ZT2", -1, 1))
+#'
+#' # Rescale to percentage points
+#' ev |> rescale_estimates_vcov(by = 100)
+#'
+#' @importFrom rlang enquo eval_tidy abort
+#' @export
+rescale_estimates_vcov <- function(ev, by) {
+  if (!inherits(ev, "estimates_vcov")) {
+    rlang::abort("`ev` must be an estimates_vcov object.")
+  }
+  est <- ev$estimates
+  s <- rlang::eval_tidy(rlang::enquo(by), data = est)
+  if (length(s) == 1L) s <- rep(s, nrow(est))
+  if (!is.numeric(s) || length(s) != nrow(est)) {
+    rlang::abort("`by` must be numeric of length 1 or nrow(estimates).")
+  }
+
+  est$estimate <- s * est$estimate
+  if ("std.error" %in% names(est)) est$std.error <- abs(s) * est$std.error
+  if ("statistic" %in% names(est)) est$statistic <- sign(s) * est$statistic
+  if (all(c("conf.low", "conf.high") %in% names(est))) {
+    lo <- s * est$conf.low
+    hi <- s * est$conf.high
+    est$conf.low  <- pmin(lo, hi)
+    est$conf.high <- pmax(lo, hi)
+  }
+
+  # V |-> diag(s) V diag(s), i.e. V[i,j] * s[i] * s[j]
+  vcov <- ev$vcov * tcrossprod(s)
+  dimnames(vcov) <- dimnames(ev$vcov)
+
+  new_estimates_vcov(est, vcov, row_map = ev$row_map)
+}
+
 #' @export
 print.estimates_vcov <- function(x, ...) {
   cat("<estimates_vcov>\n")

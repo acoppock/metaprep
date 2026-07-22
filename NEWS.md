@@ -1,3 +1,13 @@
+# metaprep 0.2.2
+
+* New `rescale_estimates_vcov()` sign-flips or rescales the estimates of an
+  `estimates_vcov` object and updates the vcov to match
+  (`diag(s) V diag(s)`), keeping the object consistent. This is the correct way
+  to flip signs (including a partial flip of some arms) or change units; the
+  dplyr methods keep the vcov row-aligned but never transform it, so
+  `mutate(estimate = -estimate)` alone would leave the vcov inconsistent. The
+  `dplyr-methods` docs now note this.
+
 # metaprep 0.2.1
 
 * The `cluster` argument of `rma_mv_helper()` and `rma_uni_helper()` now accepts

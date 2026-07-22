@@ -21,7 +21,7 @@ Grouping operation: nest_by() (returns rowwise tibble with nested estimates_vcov
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,16 @@ keeping the variance-covariance matrix synchronized with the data.</p>
 </ul></div>
 
 
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>These methods keep the vcov <strong>row-aligned</strong> (subsetting and reordering the rows
+also subset/reorder the matrix), but they never <strong>transform</strong> the matrix. In
+particular <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate()</a></code> can change the <em>values</em> of a column without touching the
+vcov, so <code>mutate(estimate = -estimate)</code> (or any rescaling of <code>estimate</code>) leaves
+the vcov inconsistent with the estimates. To sign-flip or rescale estimates and
+keep the covariances valid, use <code><a href="rescale_estimates_vcov.html">rescale_estimates_vcov()</a></code>, which updates the
+vcov as \(\mathrm{diag}(s)\, V\, \mathrm{diag}(s)\).</p>
+    </div>
 
   </main></div>
 

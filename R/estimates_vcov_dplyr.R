@@ -9,6 +9,15 @@
 #' - Column operations that don't change rows: `mutate()`, `rename()`, `select()`
 #' - Grouping operation: `nest_by()` (returns rowwise tibble with nested estimates_vcov)
 #'
+#' @details
+#' These methods keep the vcov **row-aligned** (subsetting and reordering the rows
+#' also subset/reorder the matrix), but they never **transform** the matrix. In
+#' particular `mutate()` can change the *values* of a column without touching the
+#' vcov, so `mutate(estimate = -estimate)` (or any rescaling of `estimate`) leaves
+#' the vcov inconsistent with the estimates. To sign-flip or rescale estimates and
+#' keep the covariances valid, use [rescale_estimates_vcov()], which updates the
+#' vcov as \eqn{\mathrm{diag}(s)\, V\, \mathrm{diag}(s)}.
+#'
 #' @name dplyr-methods
 NULL
 
