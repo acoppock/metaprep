@@ -28,6 +28,7 @@ Imports:
     tibble,
     tidyr
 Suggests:
+    clubSandwich,
     estimatr,
     knitr,
     metafor,

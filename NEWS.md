@@ -1,3 +1,12 @@
+# metaprep (development version)
+
+* `rma_mv_helper()` and `rma_uni_helper()` gain a `cluster` argument (a bare
+  column name evaluated in the estimates, like `yi`) and a `clubSandwich`
+  argument. When `cluster` is supplied the fit is wrapped in
+  [metafor::robust()], so `rma_mv_helper(ev, yi = estimate, random = ~ 1 | id,
+  cluster = study)` returns CR2 cluster-robust standard errors in one step.
+  Defaults are unchanged (`cluster = NULL` returns the ordinary fit).
+
 # metaprep 0.1.0
 
 * First release.

@@ -12,7 +12,8 @@
 #' @param V Variance-covariance matrix (defaults to the vcov from object)
 #' @param ... Additional arguments passed to [metafor::rma.mv()], such as `random`, `mods`, etc.
 #'
-#' @return An object of class `rma.mv` as returned by [metafor::rma.mv()]
+#' @return An object of class `rma.mv` as returned by [metafor::rma.mv()], or,
+#'   when `cluster` is supplied, a `robust.rma` object from [metafor::robust()].
 #'
 #' @examplesIf requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
 #' library(dplyr)
@@ -42,14 +43,30 @@
 #'   filter(study != "study_1") |>
 #'   rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #'
+#' # Cluster-robust (CR2) standard errors in one step (needs clubSandwich):
+#' if (requireNamespace("clubSandwich", quietly = TRUE)) {
+#'   ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id, cluster = study)
+#' }
+#'
+#' @param cluster Optional bare column name (evaluated in the estimates data
+#'   frame, like `yi`) giving the clustering variable for cluster-robust
+#'   (sandwich) standard errors. When supplied, the fit is passed to
+#'   [metafor::robust()]; when `NULL` (default) the ordinary model-based fit is
+#'   returned.
+#' @param clubSandwich Logical, passed to [metafor::robust()] when `cluster` is
+#'   supplied. `TRUE` (default) requests CR2 cluster-robust standard errors via
+#'   the clubSandwich package; `FALSE` uses metafor's CR0 estimator.
+#'
 #' @importFrom rlang enexpr eval_tidy abort
 #' @export
-rma_mv_helper <- function(object, yi, V = NULL, ...) {
+rma_mv_helper <- function(object, yi, V = NULL, cluster = NULL,
+                          clubSandwich = TRUE, ...) {
   UseMethod("rma_mv_helper")
 }
 
 #' @export
-rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, ...) {
+rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, cluster = NULL,
+                                         clubSandwich = TRUE, ...) {
   # Check that metafor is available
   if (!requireNamespace("metafor", quietly = TRUE)) {
     rlang::abort(
@@ -71,23 +88,47 @@ rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, ...) {
   yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
 
   # Call rma.mv with the evaluated vector
-  metafor::rma.mv(
+  fit <- metafor::rma.mv(
     yi = yi_vec,
     V = V,
     data = estimates,
     ...
   )
+
+  # Optionally wrap in cluster-robust standard errors
+  cluster_expr <- rlang::enexpr(cluster)
+  cluster_vec <- if (is.null(cluster_expr)) NULL else
+    rlang::eval_tidy(cluster_expr, data = estimates)
+  if (!is.null(cluster_vec)) {
+    fit <- rma_robust(fit, cluster = cluster_vec, clubSandwich = clubSandwich)
+  }
+
+  fit
 }
 
 #' @export
-rma_mv_helper.list <- function(object, yi, V = NULL, ...) {
+rma_mv_helper.list <- function(object, yi, V = NULL, cluster = NULL,
+                               clubSandwich = TRUE, ...) {
   # If it's a list (from rowwise), extract first element
   if (length(object) > 0 && inherits(object[[1]], "estimates_vcov")) {
-    # Pass yi as expression
-    rma_mv_helper(object[[1]], yi = {{yi}}, V = V, ...)
+    # Pass yi and cluster as expressions
+    rma_mv_helper(object[[1]], yi = {{yi}}, V = V,
+                  cluster = {{cluster}}, clubSandwich = clubSandwich, ...)
   } else {
     rlang::abort("List does not contain an estimates_vcov object")
   }
+}
+
+# Internal: wrap a fitted rma object in cluster-robust SEs, guarding the
+# optional clubSandwich dependency so the error is informative.
+rma_robust <- function(fit, cluster, clubSandwich = TRUE) {
+  if (clubSandwich && !requireNamespace("clubSandwich", quietly = TRUE)) {
+    rlang::abort(
+      "Package 'clubSandwich' is required for clubSandwich = TRUE.",
+      "i" = "Install it, or call with clubSandwich = FALSE for the CR0 estimator."
+    )
+  }
+  metafor::robust(fit, cluster = cluster, clubSandwich = clubSandwich)
 }
 
 #' Run rma.uni on an estimates_vcov object
@@ -105,7 +146,8 @@ rma_mv_helper.list <- function(object, yi, V = NULL, ...) {
 #' @param vi Numeric vector specifying the variances (defaults to diag(vcov))
 #' @param ... Additional arguments passed to [metafor::rma.uni()]
 #'
-#' @return An object of class `rma.uni` as returned by [metafor::rma.uni()]
+#' @return An object of class `rma.uni` as returned by [metafor::rma.uni()], or,
+#'   when `cluster` is supplied, a `robust.rma` object from [metafor::robust()].
 #'
 #' @examplesIf requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
 #' library(dplyr)
@@ -134,14 +176,24 @@ rma_mv_helper.list <- function(object, yi, V = NULL, ...) {
 #'   mutate(large_study = study == "study_3") |>
 #'   rma_uni_helper(yi = estimate, mods = ~ large_study)
 #'
+#' @param cluster Optional bare column name (evaluated in the estimates data
+#'   frame, like `yi`) giving the clustering variable for cluster-robust
+#'   (sandwich) standard errors via [metafor::robust()]. `NULL` (default)
+#'   returns the ordinary model-based fit.
+#' @param clubSandwich Logical, passed to [metafor::robust()] when `cluster` is
+#'   supplied. `TRUE` (default) requests CR2 standard errors via the
+#'   clubSandwich package; `FALSE` uses metafor's CR0 estimator.
+#'
 #' @importFrom rlang enexpr eval_tidy abort
 #' @export
-rma_uni_helper <- function(object, yi, vi = NULL, ...) {
+rma_uni_helper <- function(object, yi, vi = NULL, cluster = NULL,
+                           clubSandwich = TRUE, ...) {
   UseMethod("rma_uni_helper")
 }
 
 #' @export
-rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, ...) {
+rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
+                                          clubSandwich = TRUE, ...) {
   # Check that metafor is available
   if (!requireNamespace("metafor", quietly = TRUE)) {
     rlang::abort(
@@ -163,20 +215,32 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, ...) {
   yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
 
   # Call rma.uni with the evaluated vector
-  metafor::rma.uni(
+  fit <- metafor::rma.uni(
     yi = yi_vec,
     vi = vi,
     data = estimates,
     ...
   )
+
+  # Optionally wrap in cluster-robust standard errors
+  cluster_expr <- rlang::enexpr(cluster)
+  cluster_vec <- if (is.null(cluster_expr)) NULL else
+    rlang::eval_tidy(cluster_expr, data = estimates)
+  if (!is.null(cluster_vec)) {
+    fit <- rma_robust(fit, cluster = cluster_vec, clubSandwich = clubSandwich)
+  }
+
+  fit
 }
 
 #' @export
-rma_uni_helper.list <- function(object, yi, vi = NULL, ...) {
+rma_uni_helper.list <- function(object, yi, vi = NULL, cluster = NULL,
+                                clubSandwich = TRUE, ...) {
   # If it's a list (from rowwise), extract first element
   if (length(object) > 0 && inherits(object[[1]], "estimates_vcov")) {
-    # Pass yi as expression
-    rma_uni_helper(object[[1]], yi = {{yi}}, vi = vi, ...)
+    # Pass yi and cluster as expressions
+    rma_uni_helper(object[[1]], yi = {{yi}}, vi = vi,
+                   cluster = {{cluster}}, clubSandwich = clubSandwich, ...)
   } else {
     rlang::abort("List does not contain an estimates_vcov object")
   }

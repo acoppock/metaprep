@@ -64,6 +64,67 @@ test_that("rma_mv_helper.list works in rowwise context", {
   expect_equal(nrow(result), length(unique(ev$estimates$country)))
 })
 
+test_that("rma_mv_helper without cluster returns a plain rma.mv (not robust)", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
+
+  expect_false(inherits(result, "robust.rma"))
+})
+
+test_that("rma_mv_helper cluster = adds CR2 cluster-robust SEs", {
+  skip_if_not_installed("metafor")
+  skip_if_not_installed("clubSandwich")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- ev |>
+    rma_mv_helper(yi = estimate, random = ~ 1 | id, cluster = country)
+
+  expect_s3_class(result, "robust.rma")
+})
+
+test_that("rma_mv_helper cluster with clubSandwich = FALSE needs no clubSandwich", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- ev |>
+    rma_mv_helper(yi = estimate, random = ~ 1 | id,
+                  cluster = country, clubSandwich = FALSE)
+
+  expect_s3_class(result, "robust.rma")
+})
+
+test_that("rma_mv_helper cluster = flows through the rowwise/list path", {
+  skip_if_not_installed("metafor")
+  skip_if_not_installed("clubSandwich")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- ev |>
+    nest_by(country) |>
+    mutate(fit = list(
+      rma_mv_helper(data, yi = estimate, random = ~ 1 | id, cluster = study_type)
+    ))
+
+  expect_s3_class(result$fit[[1]], "robust.rma")
+})
+
+test_that("rma_uni_helper cluster = adds CR2 cluster-robust SEs", {
+  skip_if_not_installed("metafor")
+  skip_if_not_installed("clubSandwich")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  result <- ev |>
+    rma_uni_helper(yi = estimate, cluster = country)
+
+  expect_s3_class(result, "robust.rma")
+})
+
 test_that("rma_mv_helper uses custom vcov when provided", {
   skip_if_not_installed("metafor")
   

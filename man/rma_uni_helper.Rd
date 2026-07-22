@@ -4,7 +4,7 @@
 \alias{rma_uni_helper}
 \title{Run rma.uni on an estimates_vcov object}
 \usage{
-rma_uni_helper(object, yi, vi = NULL, ...)
+rma_uni_helper(object, yi, vi = NULL, cluster = NULL, clubSandwich = TRUE, ...)
 }
 \arguments{
 \item{object}{An estimates_vcov object}
@@ -13,10 +13,20 @@ rma_uni_helper(object, yi, vi = NULL, ...)
 
 \item{vi}{Numeric vector specifying the variances (defaults to diag(vcov))}
 
+\item{cluster}{Optional bare column name (evaluated in the estimates data
+frame, like \code{yi}) giving the clustering variable for cluster-robust
+(sandwich) standard errors via \code{\link[metafor:robust]{metafor::robust()}}. \code{NULL} (default)
+returns the ordinary model-based fit.}
+
+\item{clubSandwich}{Logical, passed to \code{\link[metafor:robust]{metafor::robust()}} when \code{cluster} is
+supplied. \code{TRUE} (default) requests CR2 standard errors via the
+clubSandwich package; \code{FALSE} uses metafor's CR0 estimator.}
+
 \item{...}{Additional arguments passed to \code{\link[metafor:rma.uni]{metafor::rma.uni()}}}
 }
 \value{
-An object of class \code{rma.uni} as returned by \code{\link[metafor:rma.uni]{metafor::rma.uni()}}
+An object of class \code{rma.uni} as returned by \code{\link[metafor:rma.uni]{metafor::rma.uni()}}, or,
+when \code{cluster} is supplied, a \code{robust.rma} object from \code{\link[metafor:robust]{metafor::robust()}}.
 }
 \description{
 A convenience wrapper for \code{\link[metafor:rma.uni]{metafor::rma.uni()}} that automatically extracts

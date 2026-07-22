@@ -4,7 +4,7 @@
 \alias{rma_mv_helper}
 \title{Run rma.mv on an estimates_vcov object}
 \usage{
-rma_mv_helper(object, yi, V = NULL, ...)
+rma_mv_helper(object, yi, V = NULL, cluster = NULL, clubSandwich = TRUE, ...)
 }
 \arguments{
 \item{object}{An estimates_vcov object}
@@ -13,10 +13,21 @@ rma_mv_helper(object, yi, V = NULL, ...)
 
 \item{V}{Variance-covariance matrix (defaults to the vcov from object)}
 
+\item{cluster}{Optional bare column name (evaluated in the estimates data
+frame, like \code{yi}) giving the clustering variable for cluster-robust
+(sandwich) standard errors. When supplied, the fit is passed to
+\code{\link[metafor:robust]{metafor::robust()}}; when \code{NULL} (default) the ordinary model-based fit is
+returned.}
+
+\item{clubSandwich}{Logical, passed to \code{\link[metafor:robust]{metafor::robust()}} when \code{cluster} is
+supplied. \code{TRUE} (default) requests CR2 cluster-robust standard errors via
+the clubSandwich package; \code{FALSE} uses metafor's CR0 estimator.}
+
 \item{...}{Additional arguments passed to \code{\link[metafor:rma.mv]{metafor::rma.mv()}}, such as \code{random}, \code{mods}, etc.}
 }
 \value{
-An object of class \code{rma.mv} as returned by \code{\link[metafor:rma.mv]{metafor::rma.mv()}}
+An object of class \code{rma.mv} as returned by \code{\link[metafor:rma.mv]{metafor::rma.mv()}}, or,
+when \code{cluster} is supplied, a \code{robust.rma} object from \code{\link[metafor:robust]{metafor::robust()}}.
 }
 \description{
 A convenience wrapper for \code{\link[metafor:rma.mv]{metafor::rma.mv()}} that automatically extracts
@@ -53,5 +64,10 @@ ev |> rma_mv_helper(yi = estimate, mods = ~ study, random = ~ 1 | id)
 ev |>
   filter(study != "study_1") |>
   rma_mv_helper(yi = estimate, random = ~ 1 | id)
+
+# Cluster-robust (CR2) standard errors in one step (needs clubSandwich):
+if (requireNamespace("clubSandwich", quietly = TRUE)) {
+  ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id, cluster = study)
+}
 \dontshow{\}) # examplesIf}
 }
