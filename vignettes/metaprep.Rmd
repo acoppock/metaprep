@@ -21,19 +21,21 @@ The annoying part is making the block-diagonal variance-covariance matrix and ke
 ```{r setup, message=FALSE}
 set.seed(343)
 library(dplyr)
+library(randomizr)
+library(estimatr)
 library(metaprep)
 ```
 
 # Three experiments
 
-Let's make fake data for three experiments. All three have a continuous outcome. The first is small (N = 50) with two arms. The second is larger (N = 100) with three arms. The third is the biggest (N = 200) with four arms.
+Let's make fake data for three experiments. All three have a continuous outcome. The first is small (N = 50) with two arms. The second is larger (N = 100) with three arms. The third is the biggest (N = 200) with four arms. We use `randomizr::complete_ra()` to assign the treatment arm `Z`, which performs complete random assignment across the arms.
 
 ```{r}
 make_trial_data <- function(n, n_arms) {
   arms <- paste0("T", seq_len(n_arms))
   data.frame(
-    Y = rnorm(n),
-    Z = factor(sample(arms, n, replace = TRUE), levels = arms)
+    Z = complete_ra(N = n, conditions = arms),
+    Y = rnorm(n)
   )
 }
 
@@ -42,12 +44,12 @@ dat_2 <- make_trial_data(100, 3)
 dat_3 <- make_trial_data(200, 4)
 ```
 
-Now we estimate treatment effects:
+Now we estimate treatment effects with `estimatr::lm_robust()`, which returns heteroskedasticity-robust standard errors:
 
 ```{r}
-fit_1 <- lm(Y ~ Z, data = dat_1)
-fit_2 <- lm(Y ~ Z, data = dat_2)
-fit_3 <- lm(Y ~ Z, data = dat_3)
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+fit_3 <- lm_robust(Y ~ Z, data = dat_3)
 ```
 
 # Basic workflow: estimates_vcov objects
