@@ -40,6 +40,8 @@
 <li>New <code><a href="../reference/bind_estimates_vcov.html">bind_estimates_vcov()</a></code> combines two or more <code>estimates_vcov</code> objects into one, stacking the estimates and assembling a block-diagonal vcov (zero covariance between objects), with <code>id</code> renumbered across the result.</li>
 <li>
 <code><a href="../reference/as_estimates_vcov.html">as_estimates_vcov()</a></code> and <code><a href="../reference/estimates_vcov_from_pieces.html">estimates_vcov_from_pieces()</a></code> now repair floating-point asymmetry in the vcov and error on asymmetry beyond a relative tolerance, which would indicate a malformed (non-covariance) matrix.</li>
+<li>
+<code><a href="../reference/rma_mv_helper.html">rma_mv_helper()</a></code> and <code><a href="../reference/rma_uni_helper.html">rma_uni_helper()</a></code> now error if a <code>mods</code> formula references a column that is not on the <code>estimates_vcov</code> object, so a moderator that never made it onto the object fails loudly instead of silently producing an empty meta-regression. The vignette gains sections on cluster-robust standard errors and meta-regression.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="metaprep-010">metaprep 0.1.0<a class="anchor" aria-label="anchor" href="#metaprep-010"></a></h2>
