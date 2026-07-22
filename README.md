@@ -7,6 +7,7 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/acoppock/metaprep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/acoppock/metaprep/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 Meta-analyzing effect estimates from multi-arm trials requires

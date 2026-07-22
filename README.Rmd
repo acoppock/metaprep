@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+[![R-CMD-check](https://github.com/acoppock/metaprep/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/acoppock/metaprep/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 Meta-analyzing effect estimates from multi-arm trials requires accounting for the dependence that arises when several treatment arms are compared to the same control group. The methods are well understood and `metafor::rma.mv()` implements them: you pass a block-diagonal variance-covariance matrix that encodes the dependence. The annoying part is building that matrix and keeping it synchronized with the estimates as you filter, group, and subset.
