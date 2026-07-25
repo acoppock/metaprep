@@ -406,12 +406,13 @@ ev |> rescale_estimates_vcov(by = 100)
 Multi-arm trials are the easy case, because one regression produces all
 the arms and [`vcov()`](https://rdrr.io/r/stats/vcov.html) hands us
 their covariances. Sometimes estimates are correlated because they share
-subjects, but no single regression produces them both. A common design:
-every subject takes a survey experiment, and a random third of them also
-take a lab experiment. The survey effect and the lab effect are
-estimated on overlapping samples, so they covary, but they have
-different outcomes and different assignment variables and will not stack
-into one model.
+subjects, and no single regression produces them both. A common design:
+every subject is randomized and gives a survey outcome, and a random
+third of them also come into the lab and give a second outcome. The two
+effect estimates share subjects and share the treatment assignment, so
+they covary – but they are measured on different samples, so stacking
+them into one multivariate regression would silently restrict the survey
+estimate to the lab third.
 
 The fix is to bootstrap the whole design – resampling *subjects*, so
 that the shared-sample dependence is what the replicates reproduce – and
@@ -424,72 +425,134 @@ object.
 ``` r
 
 n <- 400
-overlap_dat <- data.frame(
-  Z_survey = rbinom(n, 1, 0.5),
-  in_lab = rbinom(n, 1, 1 / 3)
-)
-overlap_dat$Z_lab <- if_else(overlap_dat$in_lab == 1, rbinom(n, 1, 0.5), NA)
-overlap_dat$Y_survey <- 0.2 * overlap_dat$Z_survey + rnorm(n)
-overlap_dat$Y_lab <- 0.5 * overlap_dat$Z_lab + 0.6 * overlap_dat$Y_survey + rnorm(n)
-
-estimate_both <- function(d) {
-  c(
-    survey = coef(lm_robust(Y_survey ~ Z_survey, data = d))[["Z_survey"]],
-    lab = coef(lm_robust(Y_lab ~ Z_lab, data = filter(d, in_lab == 1)))[["Z_lab"]]
+overlap_dat <-
+  tibble(subject = 1:n) |>
+  mutate(
+    Z = complete_ra(n),
+    in_lab = complete_ra(n, prob = 1 / 3),
+    U = rnorm(n),
+    Y_survey = 0.2 * Z + U + rnorm(n),
+    Y_lab = if_else(in_lab == 1, 0.5 * Z + U + rnorm(n), NA_real_)
   )
-}
 ```
 
-Each iteration draws a bootstrap sample of subjects and re-estimates
-both effects on it. Resampling row indices of `overlap_dat` resamples
-*subjects*: a subject drawn into the replicate brings both their survey
-outcome and, if they were in the lab third, their lab outcome, which is
-what carries the shared-sample dependence into the replicate estimates.
+`U` is a subject-level trait that moves both outcomes. It is what makes
+the two estimates covary once they are computed on overlapping subjects,
+and it is invisible to either regression on its own.
+
+`estimate_both()` runs one regression per outcome and stacks the tidy
+objects, labelling each with `.id = "study"`. It returns one tidy row
+per experiment, in a fixed order, which is what makes the alignment work
+later:
+
+``` r
+
+estimate_both <- function(d) {
+  bind_rows(
+    survey = tidy(lm_robust(Y_survey ~ Z, data = d)),
+    lab = tidy(lm_robust(Y_lab ~ Z, data = filter(d, in_lab == 1))),
+    .id = "study"
+  ) |>
+    filter(term != "(Intercept)") |>
+    as_tibble()
+}
+
+point_estimates <- estimate_both(overlap_dat)
+point_estimates |> select(study, term, estimate, std.error)
+#> # A tibble: 2 × 4
+#>   study  term  estimate std.error
+#>   <chr>  <chr>    <dbl>     <dbl>
+#> 1 survey Z        0.354     0.139
+#> 2 lab    Z        0.580     0.249
+```
+
+Each bootstrap iteration draws a sample of subjects with
+[`slice_sample()`](https://dplyr.tidyverse.org/reference/slice.html) and
+re-estimates both effects on it. Resampling rows of `overlap_dat`
+resamples *subjects*: a subject drawn into the replicate brings their
+survey outcome and, if they were in the lab third, their lab outcome
+too, which is what carries the shared-sample dependence into the
+replicate estimates. The loop collects one tidy data frame per iteration
+into a list, and
+[`bind_rows()`](https://dplyr.tidyverse.org/reference/bind_rows.html)
+stacks them into a long frame of replicate estimates:
 
 ``` r
 
 sims <- 200
-boots <- matrix(NA_real_, nrow = sims, ncol = 2,
-                dimnames = list(NULL, c("survey", "lab")))
+boot_list <- vector("list", sims)
 
 for (i in 1:sims) {
-  boot_indices <- sample(n, n, replace = TRUE)
-  boot_dat <- overlap_dat[boot_indices, ]
-  boots[i, ] <- estimate_both(boot_dat)
+  boot_dat <- slice_sample(overlap_dat, n = n, replace = TRUE)
+  boot_list[[i]] <- estimate_both(boot_dat)
 }
 
-head(boots)
+boots <- bind_rows(boot_list, .id = "sim")
+boots
+#> # A tibble: 400 × 11
+#>    sim   study  term  estimate std.error statistic p.value conf.low conf.high
+#>    <chr> <chr>  <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#>  1 1     survey Z        0.310     0.138      2.25 0.0249   0.0393      0.581
+#>  2 1     lab    Z        0.708     0.312      2.27 0.0248   0.0914      1.33 
+#>  3 2     survey Z        0.349     0.140      2.49 0.0130   0.0738      0.624
+#>  4 2     lab    Z        0.634     0.264      2.40 0.0177   0.112       1.16 
+#>  5 3     survey Z        0.343     0.139      2.47 0.0139   0.0702      0.617
+#>  6 3     lab    Z        0.580     0.283      2.05 0.0431   0.0184      1.14 
+#>  7 4     survey Z        0.280     0.144      1.94 0.0530  -0.00368     0.564
+#>  8 4     lab    Z        0.399     0.271      1.47 0.144   -0.138       0.935
+#>  9 5     survey Z        0.370     0.139      2.65 0.00833  0.0957      0.644
+#> 10 5     lab    Z        0.624     0.256      2.44 0.0162   0.117       1.13 
+#> # ℹ 390 more rows
+#> # ℹ 2 more variables: df <dbl>, outcome <chr>
+```
+
+Now the one step that is genuinely more comfortable in matrix form:
+[`cov()`](https://rdrr.io/r/stats/cor.html) wants replicates in rows and
+estimates in columns, so pivot the long frame wide, one column per
+experiment. Selecting those columns with `all_of(point_estimates$study)`
+is what keeps the matrix aligned to the estimates – it drops `sim` and
+puts the columns in exactly the order the rows of `point_estimates` are
+in, rather than trusting them to agree:
+
+``` r
+
+V_boot <-
+  boots |>
+  select(sim, study, estimate) |>
+  tidyr::pivot_wider(names_from = study, values_from = estimate) |>
+  select(all_of(point_estimates$study)) |>
+  cov()
+
+V_boot
+#>            survey        lab
+#> survey 0.01760522 0.00792634
+#> lab    0.00792634 0.06341028
+cov2cor(V_boot)
 #>           survey       lab
-#> [1,]  0.03518958 0.7041343
-#> [2,]  0.20013193 0.4622847
-#> [3,]  0.04725545 0.3997731
-#> [4,] -0.07492539 0.4837416
-#> [5,]  0.09572855 0.4192575
-#> [6,]  0.01493843 0.1917934
+#> survey 1.0000000 0.2372314
+#> lab    0.2372314 1.0000000
 ```
 
-The covariance of the replicates is the covariance of the estimates. The
-point estimates come from the real data, not from the bootstrap:
+The off-diagonal element is the shared-subject covariance, which no
+single regression would have given us. Treating these two estimates as
+independent – which is what assembling them into a block-diagonal matrix
+would do – would throw that correlation away.
+
+The estimates data frame is `point_estimates` with the standard errors
+replaced by the bootstrap ones.
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) also returned
+`statistic`, `p.value` and the confidence bounds, all computed from each
+experiment’s own HC2 standard error; we drop them, because they describe
+each experiment in isolation and would contradict the covariance we just
+estimated. Keeping `std.error` and setting it to `sqrt(diag(V_boot))`
+leaves the data frame and the matrix telling the same story:
 
 ``` r
 
-V_boot <- cov(boots)
-point <- estimate_both(overlap_dat)
-```
-
-The estimates data frame is built by hand, in the same row order as
-`V_boot`. Include `std.error` so that
-[`rescale_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/rescale_estimates_vcov.md)
-has standard errors to rescale:
-
-``` r
-
-boot_estimates <- data.frame(
-  study = "Overlapping samples",
-  term = names(point),
-  estimate = point,
-  std.error = sqrt(diag(V_boot))
-)
+boot_estimates <-
+  point_estimates |>
+  select(study, term, estimate) |>
+  mutate(std.error = sqrt(diag(V_boot)))
 
 ev_boot <- make_estimates_vcov(boot_estimates, V_boot)
 ev_boot
@@ -497,18 +560,11 @@ ev_boot
 #> # 2 estimates with 2x2 vcov matrix
 #> 
 #> # A tibble: 2 × 5
-#>   id    study               term   estimate std.error
-#>   <chr> <chr>               <chr>     <dbl>     <dbl>
-#> 1 1     Overlapping samples survey   0.0482    0.0983
-#> 2 2     Overlapping samples lab      0.475     0.194
-get_vcov(ev_boot)
-#>             1           2
-#> 1 0.009669895 0.001087637
-#> 2 0.001087637 0.037517028
+#>   id    study  term  estimate std.error
+#>   <chr> <chr>  <chr>    <dbl>     <dbl>
+#> 1 1     survey Z        0.354     0.133
+#> 2 2     lab    Z        0.580     0.252
 ```
-
-The off-diagonal element is the shared-subject covariance, which no
-single regression would have given us.
 
 The result is an ordinary `estimates_vcov` object, so it binds with
 objects built the usual way and pools the same way. The bootstrapped
@@ -520,8 +576,8 @@ studies it shares no subjects with:
 combined <- bind_estimates_vcov(ev_boot, ev)
 round(get_vcov(combined), 4)
 #>        1      2      3      4      5      6      7      8
-#> 1 0.0097 0.0011 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000
-#> 2 0.0011 0.0375 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000
+#> 1 0.0176 0.0079 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000
+#> 2 0.0079 0.0634 0.0000 0.0000 0.0000 0.0000 0.0000 0.0000
 #> 3 0.0000 0.0000 0.0862 0.0000 0.0000 0.0000 0.0000 0.0000
 #> 4 0.0000 0.0000 0.0000 0.0767 0.0403 0.0000 0.0000 0.0000
 #> 5 0.0000 0.0000 0.0000 0.0403 0.0590 0.0000 0.0000 0.0000
@@ -539,15 +595,15 @@ combined |> rma_mv_helper(yi = estimate, random = ~ 1 | study)
 #> Variance Components:
 #> 
 #>             estim    sqrt  nlvls  fixed  factor 
-#> sigma^2    0.0000  0.0000      4     no   study 
+#> sigma^2    0.0079  0.0887      5     no   study 
 #> 
 #> Test for Heterogeneity:
-#> Q(df = 7) = 7.0403, p-val = 0.4247
+#> Q(df = 7) = 6.2290, p-val = 0.5133
 #> 
 #> Model Results:
 #> 
-#> estimate      se    zval    pval    ci.lb   ci.ub    
-#>   0.1250  0.0710  1.7604  0.0783  -0.0142  0.2642  . 
+#> estimate      se    zval    pval   ci.lb   ci.ub    
+#>   0.2483  0.0973  2.5515  0.0107  0.0576  0.4391  * 
 #> 
 #> ---
 #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
@@ -556,8 +612,11 @@ combined |> rma_mv_helper(yi = estimate, random = ~ 1 | study)
 Two things to keep in mind. The vcov is matched to the estimates **by
 position**, so row `i` of the estimates data frame must be row and
 column `i` of the matrix; any dimnames on the matrix are discarded and
-replaced by the object’s `id`. Building both from the same ordered
-vector, as `estimate_both()` does above, makes that automatic. And
+replaced by the object’s `id`. That is why the pivot above ends in
+`select(all_of(point_estimates$study))` rather than a bare
+`select(-sim)`: it makes the column order follow the estimates, so a
+change to `estimate_both()` cannot silently transpose the
+correspondence. And
 [`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md)
 checks that the matrix is square and symmetric, erroring on asymmetry
 beyond floating-point noise – a genuinely asymmetric matrix means the
