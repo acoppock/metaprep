@@ -128,8 +128,12 @@ with dplyr verbs.
 
 - [`as_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/as_estimates_vcov.md)
   : Create an estimates_vcov object
-- [`estimates_vcov_from_pieces()`](https://alexandercoppock.com/metaprep/reference/estimates_vcov_from_pieces.md)
-  : Create estimates_vcov from separate estimates and vcov
+- [`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md)
+  : Create an estimates_vcov from estimates and a vcov you already have
+- [`bind_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/bind_estimates_vcov.md)
+  : Combine estimates_vcov objects
+- [`rescale_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/rescale_estimates_vcov.md)
+  : Sign-flip or rescale an estimates_vcov object
 - [`dplyr-methods`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md)
   : dplyr methods for estimates_vcov objects
 

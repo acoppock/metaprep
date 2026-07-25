@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,13 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="metaprep-030">metaprep 0.3.0<a class="anchor" aria-label="anchor" href="#metaprep-030"></a></h2>
+<ul><li>
+<strong>Breaking:</strong> <code>estimates_vcov_from_pieces()</code> is renamed <code><a href="../reference/make_estimates_vcov.html">make_estimates_vcov()</a></code>. No deprecated alias is kept, since the package has not been released. Rename call sites; the arguments and behavior are unchanged.</li>
+<li>
+<code><a href="../reference/make_estimates_vcov.html">make_estimates_vcov()</a></code> is documented as the entry point for estimates whose covariances do not come from a single regression – most often experiments run on overlapping samples, where the covariance between their estimates comes from bootstrapping the design and taking <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov()</a></code> of the replicate estimates. Previously it was described only as a way to recombine the output of <code><a href="../reference/get_estimates_df.html">get_estimates_df()</a></code> and <code><a href="../reference/get_vcov.html">get_vcov()</a></code>, which undersold it. The docs now state that the vcov is matched to the estimates by position and that any dimnames on the matrix are discarded, and recommend supplying <code>std.error</code> so <code><a href="../reference/rescale_estimates_vcov.html">rescale_estimates_vcov()</a></code> has standard errors to rescale. The vignette gains a “Correlated estimates with no single regression” section working the overlapping-samples bootstrap end to end, through <code><a href="../reference/bind_estimates_vcov.html">bind_estimates_vcov()</a></code> and <code><a href="../reference/rma_mv_helper.html">rma_mv_helper()</a></code>.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.3" id="metaprep-023">metaprep 0.2.3<a class="anchor" aria-label="anchor" href="#metaprep-023"></a></h2>
 <ul><li>
 <code><a href="../reference/prep_fit.html">prep_fit()</a></code>’s <code>term</code> argument now accepts tidyselect expressions matched against the model’s term names, e.g. <code>prep_fit(fit, starts_with("Z_party"))</code>, so callers no longer hand-build a coefficient-name vector with <code>grep(..., names(coef(fit)))</code>. A treatment’s main effect can be taken while dropping its interactions with tidyselect’s own set algebra, e.g. <code>matches("^Z_treated$")</code> or <code>starts_with("Z_treated") &amp; !contains(":")</code>. A character vector still works exactly as before (exact names, or regex with <code>match = "regex"</code>).</li>
@@ -52,7 +59,7 @@
 <code><a href="../reference/rma_mv_helper.html">rma_mv_helper()</a></code> and <code><a href="../reference/rma_uni_helper.html">rma_uni_helper()</a></code> gain a <code>cluster</code> argument (a bare column name evaluated in the estimates, like <code>yi</code>) and a <code>clubSandwich</code> argument. When <code>cluster</code> is supplied the fit is wrapped in [metafor::robust()], so <code>rma_mv_helper(ev, yi = estimate, random = ~ 1 | id, cluster = study)</code> returns CR2 cluster-robust standard errors in one step. Defaults are unchanged (<code>cluster = NULL</code> returns the ordinary fit).</li>
 <li>New <code><a href="../reference/bind_estimates_vcov.html">bind_estimates_vcov()</a></code> combines two or more <code>estimates_vcov</code> objects into one, stacking the estimates and assembling a block-diagonal vcov (zero covariance between objects), with <code>id</code> renumbered across the result.</li>
 <li>
-<code><a href="../reference/as_estimates_vcov.html">as_estimates_vcov()</a></code> and <code><a href="../reference/estimates_vcov_from_pieces.html">estimates_vcov_from_pieces()</a></code> now repair floating-point asymmetry in the vcov and error on asymmetry beyond a relative tolerance, which would indicate a malformed (non-covariance) matrix.</li>
+<code><a href="../reference/as_estimates_vcov.html">as_estimates_vcov()</a></code> and <code>estimates_vcov_from_pieces()</code> now repair floating-point asymmetry in the vcov and error on asymmetry beyond a relative tolerance, which would indicate a malformed (non-covariance) matrix.</li>
 <li>
 <code><a href="../reference/rma_mv_helper.html">rma_mv_helper()</a></code> and <code><a href="../reference/rma_uni_helper.html">rma_uni_helper()</a></code> now error if a <code>mods</code> formula references a column that is not on the <code>estimates_vcov</code> object, so a moderator that never made it onto the object fails loudly instead of silently producing an empty meta-regression. The vignette gains sections on cluster-robust standard errors and meta-regression.</li>
 </ul></div>
@@ -60,9 +67,9 @@
 <h2 class="pkg-version" data-toc-text="0.1.0" id="metaprep-010">metaprep 0.1.0<a class="anchor" aria-label="anchor" href="#metaprep-010"></a></h2>
 <ul><li>First release.</li>
 <li>
-<code><a href="../reference/prep_fit.html">prep_fit()</a></code> extracts tidy estimates, a <code>glance()</code> summary, and the relevant variance-covariance submatrix from a fitted model, with exact or regex term matching and multivariate-model handling.</li>
+<code><a href="../reference/prep_fit.html">prep_fit()</a></code> extracts tidy estimates, a <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> summary, and the relevant variance-covariance submatrix from a fitted model, with exact or regex term matching and multivariate-model handling.</li>
 <li>
-<code><a href="../reference/as_estimates_vcov.html">as_estimates_vcov()</a></code> and <code><a href="../reference/estimates_vcov_from_pieces.html">estimates_vcov_from_pieces()</a></code> build an <code>estimates_vcov</code> object that keeps coefficient estimates and their block-diagonal vcov matrix synchronized.</li>
+<code><a href="../reference/as_estimates_vcov.html">as_estimates_vcov()</a></code> and <code>estimates_vcov_from_pieces()</code> build an <code>estimates_vcov</code> object that keeps coefficient estimates and their block-diagonal vcov matrix synchronized.</li>
 <li>dplyr methods (<code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/nest_by.html" class="external-link">nest_by()</a></code>, and the join verbs) operate on <code>estimates_vcov</code> objects while keeping the vcov matrix in sync.</li>
 <li>
 <code><a href="../reference/get_estimates_df.html">get_estimates_df()</a></code>, <code><a href="../reference/get_glance_df.html">get_glance_df()</a></code>, and <code><a href="../reference/get_vcov.html">get_vcov()</a></code> pull the components back out of either a prepped-fits tibble or an <code>estimates_vcov</code> object.</li>

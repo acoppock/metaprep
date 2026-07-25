@@ -18,3 +18,16 @@ Supported operations:
 - Grouping operation:
   [`nest_by()`](https://dplyr.tidyverse.org/reference/nest_by.html)
   (returns rowwise tibble with nested estimates_vcov)
+
+## Details
+
+These methods keep the vcov **row-aligned** (subsetting and reordering
+the rows also subset/reorder the matrix), but they never **transform**
+the matrix. In particular
+[`mutate()`](https://dplyr.tidyverse.org/reference/mutate.html) can
+change the *values* of a column without touching the vcov, so
+`mutate(estimate = -estimate)` (or any rescaling of `estimate`) leaves
+the vcov inconsistent with the estimates. To sign-flip or rescale
+estimates and keep the covariances valid, use
+[`rescale_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/rescale_estimates_vcov.md),
+which updates the vcov as \\\mathrm{diag}(s)\\ V\\ \mathrm{diag}(s)\\.

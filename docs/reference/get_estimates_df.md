@@ -29,19 +29,24 @@ A tibble of coefficient estimates
 ## Examples
 
 ``` r
+library(randomizr)
+library(estimatr)
+
 set.seed(123)
-dat <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1"), 100, TRUE))
-prepped <- prep_fit(lm(Y ~ Z, data = dat), term = "ZT1")
+dat <- data.frame(Z = complete_ra(100, num_arms = 2), Y = rnorm(100))
+fit <- lm_robust(Y ~ Z, data = dat)
+prepped <- prep_fit(fit, term = "ZT2")
 get_estimates_df(prepped)
-#> # A tibble: 1 × 5
-#>   term  estimate std.error statistic p.value
-#>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>
-#> 1 ZT1      0.282     0.181      1.56   0.122
+#> # A tibble: 1 × 9
+#>   term  estimate std.error statistic p.value conf.low conf.high    df outcome
+#>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl> <dbl> <chr>  
+#> 1 ZT2     0.0388     0.192     0.202   0.840   -0.342     0.420    98 Y      
 
 ev <- as_estimates_vcov(prepped)
 get_estimates_df(ev)
-#> # A tibble: 1 × 6
-#>   id    term  estimate std.error statistic p.value
-#>   <chr> <chr>    <dbl>     <dbl>     <dbl>   <dbl>
-#> 1 1     ZT1      0.282     0.181      1.56   0.122
+#> # A tibble: 1 × 10
+#>   id    term  estimate std.error statistic p.value conf.low conf.high    df
+#>   <chr> <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl> <dbl>
+#> 1 1     ZT2     0.0388     0.192     0.202   0.840   -0.342     0.420    98
+#> # ℹ 1 more variable: outcome <chr>
 ```

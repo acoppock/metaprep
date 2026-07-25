@@ -207,63 +207,63 @@ test_that("as_estimates_vcov detects dimension mismatch", {
 })
 
 # ==============================================================================
-# estimates_vcov_from_pieces() Tests
+# make_estimates_vcov() Tests
 # ==============================================================================
 
-test_that("estimates_vcov_from_pieces works correctly", {
+test_that("make_estimates_vcov works correctly", {
   prepped_fits <- make_test_prepped_fits()
   
   estimates_df <- get_estimates_df(prepped_fits)
   vcov_matrix <- get_vcov(prepped_fits) |> as.matrix()
   
-  ev <- estimates_vcov_from_pieces(estimates_df, vcov_matrix)
+  ev <- make_estimates_vcov(estimates_df, vcov_matrix)
   
   expect_s3_class(ev, "estimates_vcov")
   expect_equal(nrow(ev$estimates), nrow(estimates_df))
   expect_equal(nrow(ev$vcov), nrow(vcov_matrix))
 })
 
-test_that("estimates_vcov_from_pieces validates input types", {
+test_that("make_estimates_vcov validates input types", {
   estimates_df <- data.frame(term = "x", estimate = 1)
   vcov_matrix <- matrix(1, 1, 1)
   
   expect_error(
-    estimates_vcov_from_pieces("not a df", vcov_matrix),
+    make_estimates_vcov("not a df", vcov_matrix),
     "must be a data frame"
   )
   
   expect_error(
-    estimates_vcov_from_pieces(estimates_df, "not a matrix"),
+    make_estimates_vcov(estimates_df, "not a matrix"),
     "must be a matrix"
   )
 })
 
-test_that("estimates_vcov_from_pieces validates dimensions", {
+test_that("make_estimates_vcov validates dimensions", {
   estimates_df <- data.frame(term = c("x", "y"), estimate = c(1, 2))
   vcov_matrix <- matrix(1, 1, 1)  # Wrong size
   
   expect_error(
-    estimates_vcov_from_pieces(estimates_df, vcov_matrix),
+    make_estimates_vcov(estimates_df, vcov_matrix),
     "Dimension mismatch"
   )
 })
 
-test_that("estimates_vcov_from_pieces validates square matrix", {
+test_that("make_estimates_vcov validates square matrix", {
   estimates_df <- data.frame(term = "x", estimate = 1)
   vcov_matrix <- matrix(1, 1, 2)  # Not square
   
   expect_error(
-    estimates_vcov_from_pieces(estimates_df, vcov_matrix),
+    make_estimates_vcov(estimates_df, vcov_matrix),
     "must be square"
   )
 })
 
-test_that("estimates_vcov_from_pieces handles sparse matrices", {
+test_that("make_estimates_vcov handles sparse matrices", {
   prepped_fits <- make_test_prepped_fits()
   estimates_df <- get_estimates_df(prepped_fits)
   vcov_sparse <- get_vcov(prepped_fits)  # May be sparse
   
-  ev <- estimates_vcov_from_pieces(estimates_df, vcov_sparse)
+  ev <- make_estimates_vcov(estimates_df, vcov_sparse)
   
   expect_s3_class(ev, "estimates_vcov")
   expect_true(is.matrix(ev$vcov))
@@ -340,11 +340,11 @@ test_that("row_map tracks original indices", {
 # ==========================================================================
 
 make_ev_pair <- function() {
-  ev1 <- estimates_vcov_from_pieces(
+  ev1 <- make_estimates_vcov(
     data.frame(study = "a", term = "ZT2", estimate = 0.1),
     matrix(0.0025, 1, 1)
   )
-  ev2 <- estimates_vcov_from_pieces(
+  ev2 <- make_estimates_vcov(
     data.frame(study = "b", term = c("ZT2", "ZT3"), estimate = c(0.2, 0.3)),
     matrix(c(0.0036, 0.001, 0.001, 0.0049), 2, 2)
   )
@@ -402,18 +402,18 @@ test_that("bind_estimates_vcov output pools via rma_mv_helper", {
 # vcov symmetry guard
 # ==========================================================================
 
-test_that("estimates_vcov_from_pieces errors on a genuinely asymmetric vcov", {
+test_that("make_estimates_vcov errors on a genuinely asymmetric vcov", {
   V <- matrix(c(1, 0.5, 0.2, 1), 2, 2)  # V[2,1] = 0.5, V[1,2] = 0.2
   expect_error(
-    estimates_vcov_from_pieces(data.frame(term = c("a", "b")), V),
+    make_estimates_vcov(data.frame(term = c("a", "b")), V),
     "not symmetric"
   )
 })
 
-test_that("estimates_vcov_from_pieces silently repairs floating-point asymmetry", {
+test_that("make_estimates_vcov silently repairs floating-point asymmetry", {
   V <- matrix(c(1, 0.5, 0.5, 1), 2, 2)
   V[1, 2] <- V[1, 2] + 1e-14  # sub-tolerance noise
-  ev <- estimates_vcov_from_pieces(data.frame(term = c("a", "b")), V)
+  ev <- make_estimates_vcov(data.frame(term = c("a", "b")), V)
   expect_true(isSymmetric(unname(ev$vcov)))
 })
 

@@ -1,7 +1,7 @@
 Package: metaprep
 Type: Package
 Title: Tidy Preparation of Dependent Effect Estimates for Meta-Analysis
-Version: 0.2.4
+Version: 0.3.0
 Authors@R: c(person(
       given = "Alex",
       family = "Coppock",

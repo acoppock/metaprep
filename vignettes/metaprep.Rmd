@@ -188,6 +188,83 @@ To change the sign or the units of the estimates, use `rescale_estimates_vcov()`
 ev |> rescale_estimates_vcov(by = 100)
 ```
 
+# Correlated estimates with no single regression: bootstrapping
+
+Multi-arm trials are the easy case, because one regression produces all the arms and `vcov()` hands us their covariances. Sometimes estimates are correlated because they share subjects, but no single regression produces them both. A common design: every subject takes a survey experiment, and a random third of them also take a lab experiment. The survey effect and the lab effect are estimated on overlapping samples, so they covary, but they have different outcomes and different assignment variables and will not stack into one model.
+
+The fix is to bootstrap the whole design -- resampling *subjects*, so that the shared-sample dependence is what the replicates reproduce -- and read the covariance off the replicate estimates with `cov()`. `make_estimates_vcov()` then wraps those hand-built pieces into an ordinary `estimates_vcov` object.
+
+```{r}
+n <- 400
+overlap_dat <- data.frame(
+  Z_survey = rbinom(n, 1, 0.5),
+  in_lab = rbinom(n, 1, 1 / 3)
+)
+overlap_dat$Z_lab <- if_else(overlap_dat$in_lab == 1, rbinom(n, 1, 0.5), NA)
+overlap_dat$Y_survey <- 0.2 * overlap_dat$Z_survey + rnorm(n)
+overlap_dat$Y_lab <- 0.5 * overlap_dat$Z_lab + 0.6 * overlap_dat$Y_survey + rnorm(n)
+
+estimate_both <- function(d) {
+  c(
+    survey = coef(lm_robust(Y_survey ~ Z_survey, data = d))[["Z_survey"]],
+    lab = coef(lm_robust(Y_lab ~ Z_lab, data = filter(d, in_lab == 1)))[["Z_lab"]]
+  )
+}
+```
+
+Each iteration draws a bootstrap sample of subjects and re-estimates both effects on it. Resampling row indices of `overlap_dat` resamples *subjects*: a subject drawn into the replicate brings both their survey outcome and, if they were in the lab third, their lab outcome, which is what carries the shared-sample dependence into the replicate estimates.
+
+```{r}
+sims <- 200
+boots <- matrix(NA_real_, nrow = sims, ncol = 2,
+                dimnames = list(NULL, c("survey", "lab")))
+
+for (i in 1:sims) {
+  boot_indices <- sample(n, n, replace = TRUE)
+  boot_dat <- overlap_dat[boot_indices, ]
+  boots[i, ] <- estimate_both(boot_dat)
+}
+
+head(boots)
+```
+
+The covariance of the replicates is the covariance of the estimates. The point estimates come from the real data, not from the bootstrap:
+
+```{r}
+V_boot <- cov(boots)
+point <- estimate_both(overlap_dat)
+```
+
+The estimates data frame is built by hand, in the same row order as `V_boot`. Include `std.error` so that `rescale_estimates_vcov()` has standard errors to rescale:
+
+```{r}
+boot_estimates <- data.frame(
+  study = "Overlapping samples",
+  term = names(point),
+  estimate = point,
+  std.error = sqrt(diag(V_boot))
+)
+
+ev_boot <- make_estimates_vcov(boot_estimates, V_boot)
+ev_boot
+get_vcov(ev_boot)
+```
+
+The off-diagonal element is the shared-subject covariance, which no single regression would have given us.
+
+The result is an ordinary `estimates_vcov` object, so it binds with objects built the usual way and pools the same way. The bootstrapped covariance is carried into the combined matrix, with zeros against the studies it shares no subjects with:
+
+```{r}
+combined <- bind_estimates_vcov(ev_boot, ev)
+round(get_vcov(combined), 4)
+```
+
+```{r eval=requireNamespace("metafor", quietly = TRUE)}
+combined |> rma_mv_helper(yi = estimate, random = ~ 1 | study)
+```
+
+Two things to keep in mind. The vcov is matched to the estimates **by position**, so row `i` of the estimates data frame must be row and column `i` of the matrix; any dimnames on the matrix are discarded and replaced by the object's `id`. Building both from the same ordered vector, as `estimate_both()` does above, makes that automatic. And `make_estimates_vcov()` checks that the matrix is square and symmetric, erroring on asymmetry beyond floating-point noise -- a genuinely asymmetric matrix means the rows and columns are misaligned, which would make the meta-analysis silently wrong.
+
 # What's going on under the hood
 
 `prep_fit()` conducts three post-estimation operations on the regression fit: `tidy()`, `glance()`, and `vcov()`. It subsets the rows of the tidy object and the rows and columns of the vcov object to the terms relevant for the meta-analysis -- in this case excluding the intercept.

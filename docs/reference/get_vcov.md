@@ -29,23 +29,49 @@ A variance-covariance matrix (block-diagonal for prepped_fits)
 ## Examples
 
 ``` r
-set.seed(123)
-dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
+library(dplyr)
+library(randomizr)
+library(estimatr)
 
-prepped_fits <- dplyr::bind_rows(
-  study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
-  study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
+set.seed(123)
+dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+dat_2 <- data.frame(Z = complete_ra(100, num_arms = 3), Y = rnorm(100))
+
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+
+prepped_fits <- bind_rows(
+  study_1 = prep_fit(fit_1, term = "ZT2"),
+  study_2 = prep_fit(fit_2, term = c("ZT2", "ZT3")),
   .id = "study"
 )
-vcov_matrix <- get_vcov(prepped_fits)
-dim(vcov_matrix)
-#> [1] 3 3
+# Block-diagonal vcov across studies, ready for metafor
+get_vcov(prepped_fits)
+#> 3 x 3 sparse Matrix of class "dsCMatrix"
+#>                                     
+#> [1,] 0.0762514 .          .         
+#> [2,] .         0.07500602 0.03603387
+#> [3,] .         0.03603387 0.07251291
 
 ev <- as_estimates_vcov(prepped_fits)
-get_vcov(ev)
-#>            1          2          3
-#> 1 0.07120511 0.00000000 0.00000000
-#> 2 0.00000000 0.05711795 0.02728021
-#> 3 0.00000000 0.02728021 0.05621377
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
+#> 
+#> Multivariate Meta-Analysis Model (k = 3; method: REML)
+#> 
+#> Variance Components:
+#> 
+#>             estim    sqrt  nlvls  fixed  factor 
+#> sigma^2    0.0737  0.2716      3     no      id 
+#> 
+#> Test for Heterogeneity:
+#> Q(df = 2) = 4.5405, p-val = 0.1033
+#> 
+#> Model Results:
+#> 
+#> estimate      se    zval    pval    ci.lb   ci.ub    
+#>   0.0114  0.2386  0.0478  0.9619  -0.4563  0.4791    
+#> 
+#> ---
+#> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+#> 
 ```

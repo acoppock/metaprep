@@ -39,66 +39,104 @@ An object of class `estimates_vcov` containing:
 
   Integer vector tracking original row indices
 
+## See also
+
+[`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md)
+to build the object from an estimates data frame and a vcov matrix you
+already have (e.g. a bootstrapped covariance across experiments that
+share subjects).
+
 ## Examples
 
 ``` r
-set.seed(123)
-dat1 <- data.frame(Y = rnorm(50), Z = sample(c("T0", "T1"), 50, TRUE))
-dat2 <- data.frame(Y = rnorm(100), Z = sample(c("T0", "T1", "T2"), 100, TRUE))
-dat3 <- data.frame(Y = rnorm(200), Z = sample(c("T0", "T1", "T2"), 200, TRUE))
+library(dplyr)
+#> 
+#> Attaching package: ‘dplyr’
+#> The following objects are masked from ‘package:stats’:
+#> 
+#>     filter, lag
+#> The following objects are masked from ‘package:base’:
+#> 
+#>     intersect, setdiff, setequal, union
+library(randomizr)
+library(estimatr)
 
-prepped_fits <- dplyr::bind_rows(
-  study1 = prep_fit(lm(Y ~ Z, data = dat1), term = "ZT1"),
-  study2 = prep_fit(lm(Y ~ Z, data = dat2), term = c("ZT1", "ZT2")),
-  study3 = prep_fit(lm(Y ~ Z, data = dat3), term = c("ZT1", "ZT2")),
+set.seed(123)
+dat_1 <- data.frame(Z = complete_ra(50, num_arms = 2), Y = rnorm(50))
+dat_2 <- data.frame(Z = complete_ra(100, num_arms = 3), Y = rnorm(100))
+dat_3 <- data.frame(Z = complete_ra(200, num_arms = 4), Y = rnorm(200))
+
+fit_1 <- lm_robust(Y ~ Z, data = dat_1)
+fit_2 <- lm_robust(Y ~ Z, data = dat_2)
+fit_3 <- lm_robust(Y ~ Z, data = dat_3)
+
+prepped_fits <- bind_rows(
+  study_1 = prep_fit(fit_1, term = "ZT2"),
+  study_2 = prep_fit(fit_2, term = c("ZT2", "ZT3")),
+  study_3 = prep_fit(fit_3, term = c("ZT2", "ZT3", "ZT4")),
   .id = "study"
 )
 ev <- as_estimates_vcov(prepped_fits)
 ev
 #> <estimates_vcov>
-#> # 5 estimates with 5x5 vcov matrix
+#> # 6 estimates with 6x6 vcov matrix
 #> 
-#> # A tibble: 5 × 7
-#>   id    study  term  estimate std.error statistic p.value
-#>   <chr> <chr>  <chr>    <dbl>     <dbl>     <dbl>   <dbl>
-#> 1 1     study1 ZT1     0.385      0.267     1.44    0.156
-#> 2 2     study2 ZT1     0.159      0.239     0.667   0.506
-#> 3 3     study2 ZT2    -0.176      0.237    -0.744   0.459
-#> 4 4     study3 ZT1     0.0314     0.184     0.170   0.865
-#> 5 5     study3 ZT2     0.140      0.174     0.803   0.423
+#> # A tibble: 6 × 11
+#>   id    study   term  estimate std.error statistic p.value conf.low conf.high
+#>   <chr> <chr>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#> 1 1     study_1 ZT2    -0.452      0.276    -1.64    0.108   -1.01      0.103
+#> 2 2     study_2 ZT2     0.222      0.274     0.812   0.419   -0.321     0.766
+#> 3 3     study_2 ZT3     0.366      0.269     1.36    0.178   -0.169     0.900
+#> 4 4     study_3 ZT2    -0.0879     0.197    -0.445   0.656   -0.477     0.301
+#> 5 5     study_3 ZT3    -0.0823     0.198    -0.415   0.679   -0.474     0.309
+#> 6 6     study_3 ZT4    -0.0556     0.181    -0.306   0.760   -0.413     0.302
+#> # ℹ 2 more variables: df <dbl>, outcome <chr>
 
-# dplyr verbs keep vcov synchronized
-ev |> dplyr::filter(study == "study2")
+# dplyr verbs keep the vcov synchronized
+ev |> filter(study == "study_2")
 #> <estimates_vcov>
 #> # 2 estimates with 2x2 vcov matrix
 #> 
-#> # A tibble: 2 × 7
-#>   id    study  term  estimate std.error statistic p.value
-#>   <chr> <chr>  <chr>    <dbl>     <dbl>     <dbl>   <dbl>
-#> 1 2     study2 ZT1      0.159     0.239     0.667   0.506
-#> 2 3     study2 ZT2     -0.176     0.237    -0.744   0.459
-ev |> dplyr::arrange(estimate)
+#> # A tibble: 2 × 11
+#>   id    study   term  estimate std.error statistic p.value conf.low conf.high
+#>   <chr> <chr>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#> 1 2     study_2 ZT2      0.222     0.274     0.812   0.419   -0.321     0.766
+#> 2 3     study_2 ZT3      0.366     0.269     1.36    0.178   -0.169     0.900
+#> # ℹ 2 more variables: df <dbl>, outcome <chr>
+ev |> arrange(estimate)
 #> <estimates_vcov>
-#> # 5 estimates with 5x5 vcov matrix
+#> # 6 estimates with 6x6 vcov matrix
 #> 
-#> # A tibble: 5 × 7
-#>   id    study  term  estimate std.error statistic p.value
-#>   <chr> <chr>  <chr>    <dbl>     <dbl>     <dbl>   <dbl>
-#> 1 3     study2 ZT2    -0.176      0.237    -0.744   0.459
-#> 2 4     study3 ZT1     0.0314     0.184     0.170   0.865
-#> 3 5     study3 ZT2     0.140      0.174     0.803   0.423
-#> 4 2     study2 ZT1     0.159      0.239     0.667   0.506
-#> 5 1     study1 ZT1     0.385      0.267     1.44    0.156
-ev |> dplyr::mutate(se = std.error)
-#> <estimates_vcov>
-#> # 5 estimates with 5x5 vcov matrix
+#> # A tibble: 6 × 11
+#>   id    study   term  estimate std.error statistic p.value conf.low conf.high
+#>   <chr> <chr>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#> 1 1     study_1 ZT2    -0.452      0.276    -1.64    0.108   -1.01      0.103
+#> 2 4     study_3 ZT2    -0.0879     0.197    -0.445   0.656   -0.477     0.301
+#> 3 5     study_3 ZT3    -0.0823     0.198    -0.415   0.679   -0.474     0.309
+#> 4 6     study_3 ZT4    -0.0556     0.181    -0.306   0.760   -0.413     0.302
+#> 5 2     study_2 ZT2     0.222      0.274     0.812   0.419   -0.321     0.766
+#> 6 3     study_2 ZT3     0.366      0.269     1.36    0.178   -0.169     0.900
+#> # ℹ 2 more variables: df <dbl>, outcome <chr>
+
+# Pass straight to metafor via the helper
+ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #> 
-#> # A tibble: 5 × 8
-#>   id    study  term  estimate std.error statistic p.value    se
-#>   <chr> <chr>  <chr>    <dbl>     <dbl>     <dbl>   <dbl> <dbl>
-#> 1 1     study1 ZT1     0.385      0.267     1.44    0.156 0.267
-#> 2 2     study2 ZT1     0.159      0.239     0.667   0.506 0.239
-#> 3 3     study2 ZT2    -0.176      0.237    -0.744   0.459 0.237
-#> 4 4     study3 ZT1     0.0314     0.184     0.170   0.865 0.184
-#> 5 5     study3 ZT2     0.140      0.174     0.803   0.423 0.174
+#> Multivariate Meta-Analysis Model (k = 6; method: REML)
+#> 
+#> Variance Components:
+#> 
+#>             estim    sqrt  nlvls  fixed  factor 
+#> sigma^2    0.0000  0.0000      6     no      id 
+#> 
+#> Test for Heterogeneity:
+#> Q(df = 5) = 4.6339, p-val = 0.4622
+#> 
+#> Model Results:
+#> 
+#> estimate      se     zval    pval    ci.lb   ci.ub    
+#>  -0.0479  0.1189  -0.4028  0.6871  -0.2808  0.1851    
+#> 
+#> ---
+#> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+#> 
 ```

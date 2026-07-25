@@ -47,6 +47,10 @@
 #' # Pass straight to metafor via the helper
 #' ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #'
+#' @seealso [make_estimates_vcov()] to build the object from an estimates data
+#'   frame and a vcov matrix you already have (e.g. a bootstrapped covariance
+#'   across experiments that share subjects).
+#'
 #' @importFrom dplyr select pull
 #' @importFrom tidyr unnest
 #' @importFrom Matrix bdiag
@@ -84,37 +88,81 @@ as_estimates_vcov <- function(prepped_fits_df) {
   new_estimates_vcov(estimates, vcov)
 }
 
-#' Create estimates_vcov from separate estimates and vcov
+#' Create an estimates_vcov from estimates and a vcov you already have
 #'
 #' @description
-#' Alternative constructor for estimates_vcov objects when you already have
-#' the estimates data frame and block-diagonal vcov matrix separately.
+#' Constructor for `estimates_vcov` objects from an estimates data frame and a
+#' variance-covariance matrix supplied directly, rather than read off fitted
+#' models by [as_estimates_vcov()].
 #'
-#' This is useful if you've already called [get_estimates_df()] and
-#' [get_vcov()] and want to combine them into a synchronized object.
+#' Use it whenever the covariances do not come out of a single regression. The
+#' main case is estimates that are correlated because they share subjects but
+#' cannot be stacked into one model: several experiments run on overlapping
+#' samples, where the covariance between their estimates is obtained by
+#' bootstrapping the whole design and taking `cov()` of the replicate estimates.
+#' It also serves the plumbing case of recombining the output of
+#' [get_estimates_df()] and [get_vcov()].
 #'
-#' @param estimates_df A data frame or tibble of coefficient estimates,
-#'   typically from [get_estimates_df()].
-#' @param vcov_matrix A variance-covariance matrix, typically from
-#'   [get_vcov()]. Must have dimensions matching the number of
-#'   rows in estimates_df.
+#' The vcov is matched to the estimates **by position**: row `i` of
+#' `estimates_df` is row and column `i` of `vcov_matrix`. Any dimnames on
+#' `vcov_matrix` are discarded and replaced with the object's `id`, so build
+#' both from the same ordered set of terms.
+#'
+#' @param estimates_df A data frame or tibble of coefficient estimates. Must
+#'   contain an `estimate` column to be usable downstream; a `std.error` column
+#'   (typically `sqrt(diag(vcov_matrix))`) is recommended so that
+#'   [rescale_estimates_vcov()] has standard errors to rescale.
+#' @param vcov_matrix A variance-covariance matrix, in the same row order as
+#'   `estimates_df`. Must be square, symmetric, and of the same dimension as
+#'   `nrow(estimates_df)`. Sparse `Matrix` objects are coerced with
+#'   [as.matrix()].
 #'
 #' @return An object of class `estimates_vcov`
 #'
-#' @examplesIf requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
-#' library(randomizr)
-#' library(estimatr)
+#' @seealso [as_estimates_vcov()] to build the object from [prep_fit()] output,
+#'   and [bind_estimates_vcov()] to combine the result with other objects.
 #'
+#' @examples
+#' # Two experiments on overlapping subjects: every subject takes the survey
+#' # experiment, a random third also takes the lab experiment. The two effect
+#' # estimates are correlated, but there is no single regression to read the
+#' # covariance off, so bootstrap the design and use cov() of the replicates.
 #' set.seed(123)
-#' dat <- data.frame(Z = complete_ra(100, num_arms = 2), Y = rnorm(100))
-#' fit <- lm_robust(Y ~ Z, data = dat)
-#' prepped <- prep_fit(fit, term = "ZT2")
-#' estimates_df <- get_estimates_df(prepped)
-#' vcov_matrix <- as.matrix(get_vcov(prepped))
-#' estimates_vcov_from_pieces(estimates_df, vcov_matrix)
+#' n <- 400
+#' dat <- data.frame(
+#'   Z_survey = rbinom(n, 1, 0.5),
+#'   in_lab = rbinom(n, 1, 1 / 3)
+#' )
+#' dat$Z_lab <- ifelse(dat$in_lab == 1, rbinom(n, 1, 0.5), NA)
+#' dat$Y_survey <- 0.2 * dat$Z_survey + rnorm(n)
+#' dat$Y_lab <- 0.5 * dat$Z_lab + 0.6 * dat$Y_survey + rnorm(n)
+#'
+#' estimate_both <- function(d) {
+#'   c(
+#'     survey = coef(lm(Y_survey ~ Z_survey, data = d))[["Z_survey"]],
+#'     lab = coef(lm(Y_lab ~ Z_lab, data = d[d$in_lab == 1, ]))[["Z_lab"]]
+#'   )
+#' }
+#'
+#' # Resample subjects, not rows within experiment, so the shared-sample
+#' # correlation is what the replicates reproduce
+#' boots <- t(replicate(200, estimate_both(dat[sample(n, n, replace = TRUE), ])))
+#' V <- cov(boots)
+#' point <- estimate_both(dat)
+#'
+#' estimates_df <- data.frame(
+#'   study = "study_1",
+#'   term = names(point),
+#'   estimate = point,
+#'   std.error = sqrt(diag(V))
+#' )
+#'
+#' ev <- make_estimates_vcov(estimates_df, V)
+#' ev
+#' get_vcov(ev)
 #'
 #' @export
-estimates_vcov_from_pieces <- function(estimates_df, vcov_matrix) {
+make_estimates_vcov <- function(estimates_df, vcov_matrix) {
   # --- Defensive checks ----
   if (!is.data.frame(estimates_df)) {
     rlang::abort("`estimates_df` must be a data frame or tibble.")

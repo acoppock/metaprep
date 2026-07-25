@@ -1,3 +1,22 @@
+# metaprep 0.3.0
+
+* **Breaking:** `estimates_vcov_from_pieces()` is renamed
+  `make_estimates_vcov()`. No deprecated alias is kept, since the package has
+  not been released. Rename call sites; the arguments and behavior are
+  unchanged.
+* `make_estimates_vcov()` is documented as the entry point for estimates whose
+  covariances do not come from a single regression -- most often experiments run
+  on overlapping samples, where the covariance between their estimates comes
+  from bootstrapping the design and taking `cov()` of the replicate estimates.
+  Previously it was described only as a way to recombine the output of
+  `get_estimates_df()` and `get_vcov()`, which undersold it. The docs now state
+  that the vcov is matched to the estimates by position and that any dimnames on
+  the matrix are discarded, and recommend supplying `std.error` so
+  `rescale_estimates_vcov()` has standard errors to rescale. The vignette gains
+  a "Correlated estimates with no single regression" section working the
+  overlapping-samples bootstrap end to end, through
+  `bind_estimates_vcov()` and `rma_mv_helper()`.
+
 # metaprep 0.2.3
 
 * `prep_fit()`'s `term` argument now accepts tidyselect expressions matched

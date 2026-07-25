@@ -29,7 +29,7 @@ reference:
     with dplyr verbs.
   contents:
   - as_estimates_vcov
-  - estimates_vcov_from_pieces
+  - make_estimates_vcov
   - bind_estimates_vcov
   - rescale_estimates_vcov
   - dplyr-methods

@@ -57,3 +57,8 @@ ev |> arrange(estimate)
 ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\code{\link[=make_estimates_vcov]{make_estimates_vcov()}} to build the object from an estimates data
+frame and a vcov matrix you already have (e.g. a bootstrapped covariance
+across experiments that share subjects).
+}
