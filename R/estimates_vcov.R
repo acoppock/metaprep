@@ -254,6 +254,37 @@ symmetrize_vcov <- function(vcov, tol = sqrt(.Machine$double.eps),
   if (length(vcov) == 0) {
     return(vcov)
   }
+
+  # Check for non-finite entries before testing symmetry. A rank-deficient fit
+  # can return finite coefficients alongside an NA/NaN covariance, which is how
+  # such an estimate reaches this point: it looks usable but carries no
+  # uncertainty. Without this branch both `asym` and `scale` come back NaN, the
+  # symmetry condition evaluates to NA, and R aborts with "missing value where
+  # TRUE/FALSE needed" -- an error that points at symmetry rather than at the
+  # non-finite values that actually caused it.
+  finite <- is.finite(as.matrix(vcov))
+  if (!all(finite)) {
+    bad <- which(!finite, arr.ind = TRUE)
+    ids <- rownames(vcov)
+    where <- if (!is.null(ids)) {
+      paste(unique(ids[bad[, "row"]]), collapse = ", ")
+    } else {
+      paste(unique(bad[, "row"]), collapse = ", ")
+    }
+    rlang::abort(
+      c(
+        "`vcov` contains non-finite values and cannot be a valid covariance matrix.",
+        "i" = sprintf("%d of %d cells are NA, NaN, or infinite.",
+                      nrow(bad), length(finite)),
+        "i" = sprintf("Affected rows/columns: %s.", where),
+        "i" = paste("This usually means a rank-deficient fit returned",
+                    "coefficients but no usable standard errors. Fix the fit or",
+                    "drop the affected estimates rather than pooling them.")
+      ),
+      call = call
+    )
+  }
+
   asym <- max(abs(vcov - t(vcov)))
   scale <- max(abs(vcov))
   if (scale > 0 && asym > tol * scale) {

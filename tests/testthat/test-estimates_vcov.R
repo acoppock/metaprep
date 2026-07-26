@@ -417,6 +417,47 @@ test_that("make_estimates_vcov silently repairs floating-point asymmetry", {
   expect_true(isSymmetric(unname(ev$vcov)))
 })
 
+test_that("make_estimates_vcov errors informatively on a non-finite vcov", {
+  # A rank-deficient fit returns finite coefficients with an NaN covariance.
+  # The error must name the non-finite values, not blame asymmetry, and must
+  # not fall through to R's "missing value where TRUE/FALSE needed".
+  V <- matrix(NaN, 2, 2)
+  expect_error(
+    make_estimates_vcov(data.frame(term = c("a", "b")), V),
+    "non-finite values"
+  )
+  expect_error(
+    make_estimates_vcov(data.frame(term = c("a", "b")), V),
+    "4 of 4 cells"
+  )
+})
+
+test_that("a single non-finite cell is caught and located", {
+  V <- matrix(c(1, 0.5, 0.5, 1), 2, 2)
+  V[2, 2] <- NA_real_
+  err <- expect_error(
+    make_estimates_vcov(data.frame(term = c("a", "b")), V),
+    "non-finite values"
+  )
+  expect_match(conditionMessage(err), "1 of 4 cells")
+})
+
+test_that("an infinite vcov cell is rejected", {
+  V <- matrix(c(1, 0.5, 0.5, Inf), 2, 2)
+  expect_error(
+    make_estimates_vcov(data.frame(term = c("a", "b")), V),
+    "non-finite values"
+  )
+})
+
+test_that("the non-finite guard does not fire on a clean vcov", {
+  V <- matrix(c(1, 0.5, 0.5, 1), 2, 2)
+  expect_s3_class(
+    make_estimates_vcov(data.frame(term = c("a", "b")), V),
+    "estimates_vcov"
+  )
+})
+
 # ==========================================================================
 # rescale_estimates_vcov()
 # ==========================================================================
