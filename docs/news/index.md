@@ -1,5 +1,75 @@
 # Changelog
 
+## metaprep 0.3.1
+
+- [`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
+  no longer discards covariances silently.
+  [`rma.uni()`](https://wviechtb.github.io/metafor/reference/rma.uni.html)
+  takes only the variances, so calling it on an object whose vcov has
+  nonzero off-diagonals throws away the dependence the package exists to
+  carry and returns a standard error that is too small: on a
+  five-estimate two-study object, 0.100 against
+  [`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)’s
+  0.152. The docs already said to use
+  [`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)
+  for correlated estimates, but nothing fired at runtime. When `vi` is
+  not supplied and the vcov has nonzero off-diagonal entries,
+  [`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
+  now warns (class `"metaprep_discarded_covariance"`), names how many
+  covariances were dropped, and points at
+  [`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md).
+  Supplying `vi` explicitly silences it and returns an identical fit,
+  which is the way to say the univariate fit is what you meant. Objects
+  with no covariances (the ordinary univariate case) are unaffected.
+
+- [`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)
+  and
+  [`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
+  now error when an estimate entering the pool is `NA`, `NaN`, or
+  infinite. `metafor` drops such rows with a warning and returns a fit
+  whose `k` is smaller than the object, so anything joining a
+  per-estimate quantity back onto the estimates
+  ([`weights()`](https://rdrr.io/r/stats/weights.html),
+  [`resid()`](https://rdrr.io/r/stats/residuals.html)) silently
+  misaligns. The error names the count and the affected `id`s. This is
+  the mirror of the non-finite `vcov` guard added in 0.2.x, and it
+  follows the same reasoning: an estimate that cannot carry its own
+  weight must not enter a pooled fit silently, and which estimates to
+  drop is the analyst’s call. Verified against 115 `estimates_vcov`
+  objects across the meta-reanalysis projects, none of which has a
+  non-finite estimate, so no existing pipeline changes.
+
+- Fourteen error and warning messages were silently dropping their
+  guidance bullet. `rlang::abort(msg, "i" = hint)` passes the hint into
+  `...`, where rlang stores it as a condition field and never prints it;
+  the bullets only render when they are part of the message vector, as
+  `rlang::abort(c(msg, "i" = hint))`. So
+  `as_estimates_vcov(some_data_frame)` reported only “Input must contain
+  list-columns named `tidy_obj` and `vcov_obj`.” and swallowed “Did you
+  pass the result of
+  [`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md)?”,
+  which is the hint a first-time caller most needs. All fourteen now
+  print their bullet: the four “did you pass
+  [`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md)
+  output” hints, the four dimension and squareness reports, the three
+  missing-package install lines,
+  [`get_glance_df()`](https://alexandercoppock.com/metaprep/reference/get_glance_df.md)’s
+  pointer to extract glance before building the object, and
+  [`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md)’s
+  missing-[`tidy()`](https://generics.r-lib.org/reference/tidy.html)/[`glance()`](https://generics.r-lib.org/reference/glance.html)/
+  [`vcov()`](https://rdrr.io/r/stats/vcov.html)-method hints. A new
+  `test-error-messages.R` asserts on the hint text rather than the
+  headline, so the defect class cannot return silently.
+
+- The vignette’s bootstrap section pooled with `random = ~ 1 | study`
+  where every other chunk uses `random = ~ 1 | id`, so the one place the
+  reader meets a combined object silently switched to a different model
+  (a study-level intercept over five levels rather than an
+  estimate-level random effect over eight, moving tau^2 from 0.006 to
+  0.020 and the pooled estimate from 0.223 to 0.238). Worse, the two
+  bootstrapped rows are one study sharing subjects, and `~ 1 | study`
+  entered them as two independent studies. Now `~ 1 | id` throughout.
+
 ## metaprep 0.3.0
 
 - **Breaking:** `estimates_vcov_from_pieces()` is renamed

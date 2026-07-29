@@ -67,6 +67,17 @@ A tibble with one row and the following list-columns:
   A numeric matrix of the variance-covariance subset corresponding to
   the selected terms.
 
+## See also
+
+[`as_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/as_estimates_vcov.md)
+to turn a bound set of prepped fits into an
+[estimates_vcov](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+object, and
+[`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md)
+/
+[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
+to read the list-columns back out.
+
 ## Examples
 
 ``` r

@@ -588,22 +588,22 @@ round(get_vcov(combined), 4)
 
 ``` r
 
-combined |> rma_mv_helper(yi = estimate, random = ~ 1 | study)
+combined |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #> 
 #> Multivariate Meta-Analysis Model (k = 8; method: REML)
 #> 
 #> Variance Components:
 #> 
 #>             estim    sqrt  nlvls  fixed  factor 
-#> sigma^2    0.0079  0.0887      5     no   study 
+#> sigma^2    0.0000  0.0000      8     no      id 
 #> 
 #> Test for Heterogeneity:
 #> Q(df = 7) = 6.2290, p-val = 0.5133
 #> 
 #> Model Results:
 #> 
-#> estimate      se    zval    pval   ci.lb   ci.ub    
-#>   0.2483  0.0973  2.5515  0.0107  0.0576  0.4391  * 
+#> estimate      se    zval    pval   ci.lb   ci.ub     
+#>   0.2405  0.0858  2.8017  0.0051  0.0722  0.4087  ** 
 #> 
 #> ---
 #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1

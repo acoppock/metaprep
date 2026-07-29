@@ -33,3 +33,9 @@ prepped <- prep_fit(fit, term = "ZT2")
 get_glance_df(prepped)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+Other component accessors:
+\code{\link[=get_estimates_df]{get_estimates_df()}},
+\code{\link[=get_vcov]{get_vcov()}}
+}
+\concept{component accessors}

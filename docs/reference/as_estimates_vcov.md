@@ -44,7 +44,16 @@ An object of class `estimates_vcov` containing:
 [`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md)
 to build the object from an estimates data frame and a vcov matrix you
 already have (e.g. a bootstrapped covariance across experiments that
-share subjects).
+share subjects), and
+[estimates_vcov](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+for what the resulting object guarantees.
+
+Other estimates_vcov objects:
+[`bind_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/bind_estimates_vcov.md),
+[`dplyr-methods`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md),
+[`estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md),
+[`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md),
+[`rescale_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/rescale_estimates_vcov.md)
 
 ## Examples
 

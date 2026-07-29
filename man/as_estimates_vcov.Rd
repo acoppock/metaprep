@@ -15,7 +15,8 @@ An object of class \code{estimates_vcov} containing:
 \describe{
 \item{estimates}{A tibble of unnested coefficient estimates with an \code{id} column}
 \item{vcov}{A block-diagonal variance-covariance matrix with rownames/colnames matching \code{id}}
-\item{row_map}{Integer vector tracking original row indices}
+\item{row_map}{Internal bookkeeping; see \link{estimates_vcov} for what is and is
+not part of the public interface}
 }
 }
 \description{
@@ -60,5 +61,14 @@ ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 \seealso{
 \code{\link[=make_estimates_vcov]{make_estimates_vcov()}} to build the object from an estimates data
 frame and a vcov matrix you already have (e.g. a bootstrapped covariance
-across experiments that share subjects).
+across experiments that share subjects), and \link{estimates_vcov} for what the
+resulting object guarantees.
+
+Other estimates_vcov objects:
+\code{\link[=bind_estimates_vcov]{bind_estimates_vcov()}},
+\code{\link{dplyr-methods}},
+\code{\link{estimates_vcov}},
+\code{\link[=make_estimates_vcov]{make_estimates_vcov()}},
+\code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}}
 }
+\concept{estimates_vcov objects}

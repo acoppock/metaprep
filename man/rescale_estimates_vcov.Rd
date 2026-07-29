@@ -52,3 +52,15 @@ ev |> rescale_estimates_vcov(by = if_else(term == "ZT2", -1, 1))
 ev |> rescale_estimates_vcov(by = 100)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\link{dplyr-methods}, which keep the vcov row-aligned but never transform
+it, and \link{estimates_vcov} for what the object guarantees.
+
+Other estimates_vcov objects:
+\code{\link[=as_estimates_vcov]{as_estimates_vcov()}},
+\code{\link[=bind_estimates_vcov]{bind_estimates_vcov()}},
+\code{\link{dplyr-methods}},
+\code{\link{estimates_vcov}},
+\code{\link[=make_estimates_vcov]{make_estimates_vcov()}}
+}
+\concept{estimates_vcov objects}

@@ -76,3 +76,8 @@ ev <- as_estimates_vcov(prepped_fits)
 ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\code{\link[=as_estimates_vcov]{as_estimates_vcov()}} to turn a bound set of prepped fits into an
+\link{estimates_vcov} object, and \code{\link[=get_estimates_df]{get_estimates_df()}} / \code{\link[=get_vcov]{get_vcov()}} to read the
+list-columns back out.
+}

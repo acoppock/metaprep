@@ -36,6 +36,19 @@ Note: This function uses the diagonal of the vcov matrix as the variance
 estimates. If you have correlated estimates (e.g., from multi-arm trials),
 use \code{\link[=rma_mv_helper]{rma_mv_helper()}} instead to properly account for the correlation structure.
 }
+\details{
+Taking the diagonal throws away every covariance the object carries, which
+makes the pooled standard error too small. When \code{vi} is not supplied and the
+vcov has nonzero off-diagonal entries, the function warns (with class
+\code{"metaprep_discarded_covariance"}) naming how many covariances were dropped.
+Supply \code{vi} explicitly when the univariate fit is genuinely what you want.
+
+Estimates must be finite. \code{metafor} drops non-finite rows with a warning and
+returns a fit whose \code{k} is smaller than the object, which silently misaligns
+anything joining a per-estimate quantity such as \code{\link[stats:weights]{stats::weights()}} back onto
+the estimates, so \code{rma_uni_helper()} errors instead and leaves the choice of
+which estimates to drop to you.
+}
 \examples{
 \dontshow{if (requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 library(dplyr)
@@ -65,3 +78,11 @@ ev |>
   rma_uni_helper(yi = estimate, mods = ~ large_study)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\code{\link[=rma_mv_helper]{rma_mv_helper()}}, which uses the full vcov and is what dependent
+estimates need.
+
+Other meta-analysis wrappers:
+\code{\link[=rma_mv_helper]{rma_mv_helper()}}
+}
+\concept{meta-analysis wrappers}

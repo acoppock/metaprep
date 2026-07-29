@@ -18,7 +18,76 @@
 #' keep the covariances valid, use [rescale_estimates_vcov()], which updates the
 #' vcov as \eqn{\mathrm{diag}(s)\, V\, \mathrm{diag}(s)}.
 #'
+#' Joins that could change the row set are refused rather than allowed to
+#' desynchronize the object: `inner_join()` and `full_join()` can drop or add
+#' rows, and `right_join()` changes which rows are kept. `left_join()` is
+#' supported, and errors if the join turns out to duplicate rows. Use `filter()`
+#' when the intent is to remove estimates.
+#'
+#' @param .data,x An `estimates_vcov` object.
+#' @param y A data frame to join against.
+#' @param ... Passed on to the corresponding dplyr verb.
+#' @param .preserve,.by_group,.key,.keep,n,prop,var,name Passed on to the
+#'   corresponding dplyr verb.
+#' @param by,copy,suffix,keep,na_matches,multiple,unmatched,relationship Passed on
+#'   to the corresponding dplyr join.
+#' @param .before,.after Passed on to [dplyr::relocate()].
+#'
+#' @return An `estimates_vcov` object, except for `pull()`, which returns a
+#'   vector, and `nest_by()`, which returns a rowwise tibble whose `.key` column
+#'   holds one `estimates_vcov` object per group.
+#'
+#' @examples
+#' library(dplyr)
+#'
+#' set.seed(1)
+#' dat_1 <- data.frame(Y = rnorm(60), Z = factor(rep(c("T0", "T1"), each = 30)))
+#' dat_2 <- data.frame(Y = rnorm(90), Z = factor(rep(c("T0", "T1", "T2"), each = 30)))
+#'
+#' ev <- as_estimates_vcov(bind_rows(
+#'   study_1 = prep_fit(lm(Y ~ Z, dat_1), term = "ZT1"),
+#'   study_2 = prep_fit(lm(Y ~ Z, dat_2), term = c("ZT1", "ZT2")),
+#'   .id = "study"
+#' ))
+#'
+#' # Row operations subset or reorder the vcov along with the estimates
+#' dim(get_vcov(ev))
+#' dim(get_vcov(filter(ev, study == "study_2")))
+#' rownames(get_vcov(arrange(ev, estimate)))
+#'
+#' # Column operations leave the vcov alone, because the rows cannot change
+#' ev |> mutate(abs_estimate = abs(estimate))
+#' ev |> select(id, study, term, estimate)
+#'
+#' # nest_by() gives one self-contained object per group, each with its own vcov
+#' nested <- ev |> nest_by(study)
+#' nested$data[[2]]
+#' dim(get_vcov(nested$data[[2]]))
+#'
+#' # left_join() adds columns; a join that duplicated rows would be an error
+#' ev |> left_join(data.frame(study = c("study_1", "study_2"),
+#'                            region = c("north", "south")), by = "study")
+#'
+#' # Study 2's two arms covary: that is the entry a sign flip has to update.
+#' get_vcov(ev)[2, 3]
+#'
+#' # mutate() does NOT transform the vcov, so this desynchronizes the object:
+#' get_vcov(mutate(ev, estimate = -estimate))[2, 3]  # unchanged, now wrong
+#'
+#' # rescale_estimates_vcov() updates it. Flipping one arm and not the other
+#' # flips the sign of their covariance, which is the case easiest to get wrong:
+#' get_vcov(rescale_estimates_vcov(ev, by = if_else(id == "2", -1, 1)))[2, 3]
+#'
+#' @seealso [rescale_estimates_vcov()] to transform estimate values and the vcov
+#'   together, and [estimates_vcov] for what the object guarantees.
+#' @family estimates_vcov objects
 #' @name dplyr-methods
+#' @aliases filter.estimates_vcov slice.estimates_vcov slice_head.estimates_vcov
+#'   slice_tail.estimates_vcov arrange.estimates_vcov mutate.estimates_vcov
+#'   select.estimates_vcov rename.estimates_vcov relocate.estimates_vcov
+#'   pull.estimates_vcov nest_by.estimates_vcov left_join.estimates_vcov
+#'   right_join.estimates_vcov inner_join.estimates_vcov full_join.estimates_vcov
+#'   semi_join.estimates_vcov anti_join.estimates_vcov
 NULL
 
 # ---- Filter ----

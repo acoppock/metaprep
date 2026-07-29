@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -560,22 +560,22 @@ against the studies it shares no subjects with:</p>
 <span><span class="co">#&gt; 7 0.0000 0.0000 0.0000 0.0000 0.0000 0.0167 0.0423 0.0167</span></span>
 <span><span class="co">#&gt; 8 0.0000 0.0000 0.0000 0.0000 0.0000 0.0167 0.0167 0.0320</span></span></code></pre></div>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">combined</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/rma_mv_helper.html">rma_mv_helper</a></span><span class="op">(</span>yi <span class="op">=</span> <span class="va">estimate</span>, random <span class="op">=</span> <span class="op">~</span> <span class="fl">1</span> <span class="op">|</span> <span class="va">study</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">combined</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/rma_mv_helper.html">rma_mv_helper</a></span><span class="op">(</span>yi <span class="op">=</span> <span class="va">estimate</span>, random <span class="op">=</span> <span class="op">~</span> <span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Multivariate Meta-Analysis Model (k = 8; method: REML)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Variance Components:</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;             estim    sqrt  nlvls  fixed  factor </span></span>
-<span><span class="co">#&gt; sigma^2    0.0079  0.0887      5     no   study </span></span>
+<span><span class="co">#&gt; sigma^2    0.0000  0.0000      8     no      id </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Test for Heterogeneity:</span></span>
 <span><span class="co">#&gt; Q(df = 7) = 6.2290, p-val = 0.5133</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Model Results:</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; estimate      se    zval    pval   ci.lb   ci.ub    </span></span>
-<span><span class="co">#&gt;   0.2483  0.0973  2.5515  0.0107  0.0576  0.4391  * </span></span>
+<span><span class="co">#&gt; estimate      se    zval    pval   ci.lb   ci.ub     </span></span>
+<span><span class="co">#&gt;   0.2405  0.0858  2.8017  0.0051  0.0722  0.4087  ** </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span></code></pre></div>

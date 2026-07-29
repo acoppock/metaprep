@@ -26,6 +26,20 @@ bind_estimates_vcov(...)
 
 A combined `estimates_vcov` object.
 
+## See also
+
+[estimates_vcov](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+for the object's structure, and
+[`rescale_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/rescale_estimates_vcov.md)
+to align estimate signs before or after combining.
+
+Other estimates_vcov objects:
+[`as_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/as_estimates_vcov.md),
+[`dplyr-methods`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md),
+[`estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md),
+[`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md),
+[`rescale_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/rescale_estimates_vcov.md)
+
 ## Examples
 
 ``` r

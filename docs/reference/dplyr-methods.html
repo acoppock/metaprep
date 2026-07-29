@@ -21,7 +21,7 @@ Grouping operation: nest_by() (returns rowwise tibble with nested estimates_vcov
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,6 +58,42 @@ keeping the variance-covariance matrix synchronized with the data.</p>
 
 
     <div class="section level2">
+    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
+
+
+<dl><dt id="arg--data-x">.data, x<a class="anchor" aria-label="anchor" href="#arg--data-x"></a></dt>
+<dd><p>An <code>estimates_vcov</code> object.</p></dd>
+
+
+<dt id="arg-y">y<a class="anchor" aria-label="anchor" href="#arg-y"></a></dt>
+<dd><p>A data frame to join against.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Passed on to the corresponding dplyr verb.</p></dd>
+
+
+<dt id="arg--preserve-by-group-key-keep-n-prop-var-name">.preserve, .by_group, .key, .keep, n, prop, var, name<a class="anchor" aria-label="anchor" href="#arg--preserve-by-group-key-keep-n-prop-var-name"></a></dt>
+<dd><p>Passed on to the
+corresponding dplyr verb.</p></dd>
+
+
+<dt id="arg-by-copy-suffix-keep-na-matches-multiple-unmatched-relationship">by, copy, suffix, keep, na_matches, multiple, unmatched, relationship<a class="anchor" aria-label="anchor" href="#arg-by-copy-suffix-keep-na-matches-multiple-unmatched-relationship"></a></dt>
+<dd><p>Passed on
+to the corresponding dplyr join.</p></dd>
+
+
+<dt id="arg--before-after">.before, .after<a class="anchor" aria-label="anchor" href="#arg--before-after"></a></dt>
+<dd><p>Passed on to <code><a href="https://dplyr.tidyverse.org/reference/relocate.html" class="external-link">dplyr::relocate()</a></code>.</p></dd>
+
+</dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p>An <code>estimates_vcov</code> object, except for <code><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull()</a></code>, which returns a
+vector, and <code><a href="https://dplyr.tidyverse.org/reference/nest_by.html" class="external-link">nest_by()</a></code>, which returns a rowwise tibble whose <code>.key</code> column
+holds one <code>estimates_vcov</code> object per group.</p>
+    </div>
+    <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>These methods keep the vcov <strong>row-aligned</strong> (subsetting and reordering the rows
 also subset/reorder the matrix), but they never <strong>transform</strong> the matrix. In
@@ -66,9 +102,112 @@ vcov, so <code>mutate(estimate = -estimate)</code> (or any rescaling of <code>es
 the vcov inconsistent with the estimates. To sign-flip or rescale estimates and
 keep the covariances valid, use <code><a href="rescale_estimates_vcov.html">rescale_estimates_vcov()</a></code>, which updates the
 vcov as \(\mathrm{diag}(s)\, V\, \mathrm{diag}(s)\).</p>
+<p>Joins that could change the row set are refused rather than allowed to
+desynchronize the object: <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join()</a></code> and <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">full_join()</a></code> can drop or add
+rows, and <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">right_join()</a></code> changes which rows are kept. <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join()</a></code> is
+supported, and errors if the join turns out to duplicate rows. Use <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter()</a></code>
+when the intent is to remove estimates.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="rescale_estimates_vcov.html">rescale_estimates_vcov()</a></code> to transform estimate values and the vcov
+together, and <a href="estimates_vcov.html">estimates_vcov</a> for what the object guarantees.</p>
+<p>Other estimates_vcov objects:
+<code><a href="as_estimates_vcov.html">as_estimates_vcov()</a></code>,
+<code><a href="bind_estimates_vcov.html">bind_estimates_vcov()</a></code>,
+<code><a href="estimates_vcov.html">estimates_vcov</a></code>,
+<code><a href="make_estimates_vcov.html">make_estimates_vcov()</a></code>,
+<code><a href="rescale_estimates_vcov.html">rescale_estimates_vcov()</a></code></p></div>
     </div>
 
-  </main></div>
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">)</span>, Z <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T0"</span>, <span class="st">"T1"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">30</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">dat_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">90</span><span class="op">)</span>, Z <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T0"</span>, <span class="st">"T1"</span>, <span class="st">"T2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">30</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">&lt;-</span> <span class="fu"><a href="as_estimates_vcov.html">as_estimates_vcov</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  study_1 <span class="op">=</span> <span class="fu"><a href="prep_fit.html">prep_fit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, <span class="va">dat_1</span><span class="op">)</span>, term <span class="op">=</span> <span class="st">"ZT1"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  study_2 <span class="op">=</span> <span class="fu"><a href="prep_fit.html">prep_fit</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Z</span>, <span class="va">dat_2</span><span class="op">)</span>, term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ZT1"</span>, <span class="st">"ZT2"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  .id <span class="op">=</span> <span class="st">"study"</span></span></span>
+<span class="r-in"><span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Row operations subset or reorder the vcov along with the estimates</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="va">ev</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3 3</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">ev</span>, <span class="va">study</span> <span class="op">==</span> <span class="st">"study_2"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2 2</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">ev</span>, <span class="va">estimate</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "3" "2" "1"</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Column operations leave the vcov alone, because the rows cannot change</span></span></span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>abs_estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;estimates_vcov&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # 3 estimates with 3x3 vcov matrix</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 8</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   id    study   term  estimate std.error statistic p.value abs_estimate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1     study_1 ZT1    0.050<span style="text-decoration: underline;">3</span>      0.223    0.226   0.822       0.050<span style="text-decoration: underline;">3</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2     study_2 ZT1    0.003<span style="text-decoration: underline;">05</span>     0.238    0.012<span style="text-decoration: underline;">8</span>  0.990       0.003<span style="text-decoration: underline;">05</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3     study_2 ZT2   -<span style="color: #BB0000;">0.440</span>       0.238   -<span style="color: #BB0000;">1.85</span>    0.067<span style="text-decoration: underline;">9</span>      0.440  </span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, <span class="va">study</span>, <span class="va">term</span>, <span class="va">estimate</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;estimates_vcov&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # 3 estimates with 3x3 vcov matrix</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   id    study   term  estimate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1     study_1 ZT1    0.050<span style="text-decoration: underline;">3</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2     study_2 ZT1    0.003<span style="text-decoration: underline;">05</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3     study_2 ZT2   -<span style="color: #BB0000;">0.440</span>  </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># nest_by() gives one self-contained object per group, each with its own vcov</span></span></span>
+<span class="r-in"><span><span class="va">nested</span> <span class="op">&lt;-</span> <span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/nest_by.html" class="external-link">nest_by</a></span><span class="op">(</span><span class="va">study</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">nested</span><span class="op">$</span><span class="va">data</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;estimates_vcov&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # 2 estimates with 2x2 vcov matrix</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2 × 6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   id    term  estimate std.error statistic p.value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 2     ZT1    0.003<span style="text-decoration: underline;">05</span>     0.238    0.012<span style="text-decoration: underline;">8</span>  0.990 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 3     ZT2   -<span style="color: #BB0000;">0.440</span>       0.238   -<span style="color: #BB0000;">1.85</span>    0.067<span style="text-decoration: underline;">9</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="va">nested</span><span class="op">$</span><span class="va">data</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2 2</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># left_join() adds columns; a join that duplicated rows would be an error</span></span></span>
+<span class="r-in"><span><span class="va">ev</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>study <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"study_1"</span>, <span class="st">"study_2"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                           region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"north"</span>, <span class="st">"south"</span><span class="op">)</span><span class="op">)</span>, by <span class="op">=</span> <span class="st">"study"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;estimates_vcov&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # 3 estimates with 3x3 vcov matrix</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 3 × 8</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   id    study   term  estimate std.error statistic p.value region</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1     study_1 ZT1    0.050<span style="text-decoration: underline;">3</span>      0.223    0.226   0.822  north </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2     study_2 ZT1    0.003<span style="text-decoration: underline;">05</span>     0.238    0.012<span style="text-decoration: underline;">8</span>  0.990  south </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3     study_2 ZT2   -<span style="color: #BB0000;">0.440</span>       0.238   -<span style="color: #BB0000;">1.85</span>    0.067<span style="text-decoration: underline;">9</span> south </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Study 2's two arms covary: that is the entry a sign flip has to update.</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="va">ev</span><span class="op">)</span><span class="op">[</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.02836191</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># mutate() does NOT transform the vcov, so this desynchronizes the object:</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">ev</span>, estimate <span class="op">=</span> <span class="op">-</span><span class="va">estimate</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">]</span>  <span class="co"># unchanged, now wrong</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.02836191</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># rescale_estimates_vcov() updates it. Flipping one arm and not the other</span></span></span>
+<span class="r-in"><span><span class="co"># flips the sign of their covariance, which is the case easiest to get wrong:</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="get_vcov.html">get_vcov</a></span><span class="op">(</span><span class="fu"><a href="rescale_estimates_vcov.html">rescale_estimates_vcov</a></span><span class="op">(</span><span class="va">ev</span>, by <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="st">"2"</span>, <span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] -0.02836191</span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

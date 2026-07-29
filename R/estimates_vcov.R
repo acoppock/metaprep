@@ -14,7 +14,8 @@
 #' \describe{
 #'   \item{estimates}{A tibble of unnested coefficient estimates with an `id` column}
 #'   \item{vcov}{A block-diagonal variance-covariance matrix with rownames/colnames matching `id`}
-#'   \item{row_map}{Integer vector tracking original row indices}
+#'   \item{row_map}{Internal bookkeeping; see [estimates_vcov] for what is and is
+#'     not part of the public interface}
 #' }
 #'
 #' @examplesIf requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)
@@ -49,8 +50,10 @@
 #'
 #' @seealso [make_estimates_vcov()] to build the object from an estimates data
 #'   frame and a vcov matrix you already have (e.g. a bootstrapped covariance
-#'   across experiments that share subjects).
+#'   across experiments that share subjects), and [estimates_vcov] for what the
+#'   resulting object guarantees.
 #'
+#' @family estimates_vcov objects
 #' @importFrom dplyr select pull
 #' @importFrom tidyr unnest
 #' @importFrom Matrix bdiag
@@ -121,6 +124,8 @@ as_estimates_vcov <- function(prepped_fits_df) {
 #'
 #' @seealso [as_estimates_vcov()] to build the object from [prep_fit()] output,
 #'   and [bind_estimates_vcov()] to combine the result with other objects.
+#'
+#' @family estimates_vcov objects
 #'
 #' @examples
 #' # Two experiments on overlapping subjects: every subject takes the survey
@@ -338,6 +343,10 @@ symmetrize_vcov <- function(vcov, tol = sqrt(.Machine$double.eps),
 #' # One object, block-diagonal vcov, id renumbered 1..n
 #' bind_estimates_vcov(ev_a, ev_b)
 #'
+#' @seealso [estimates_vcov] for the object's structure, and
+#'   [rescale_estimates_vcov()] to align estimate signs before or after combining.
+#'
+#' @family estimates_vcov objects
 #' @importFrom dplyr bind_rows
 #' @importFrom Matrix bdiag
 #' @importFrom rlang abort
@@ -417,6 +426,10 @@ bind_estimates_vcov <- function(...) {
 #' # Rescale to percentage points
 #' ev |> rescale_estimates_vcov(by = 100)
 #'
+#' @seealso [dplyr-methods], which keep the vcov row-aligned but never transform
+#'   it, and [estimates_vcov] for what the object guarantees.
+#'
+#' @family estimates_vcov objects
 #' @importFrom rlang enquo eval_tidy abort
 #' @export
 rescale_estimates_vcov <- function(ev, by) {
@@ -494,6 +507,7 @@ as_tibble.estimates_vcov <- function(x, ...) {
 #' ev <- as_estimates_vcov(prepped)
 #' get_estimates_df(ev)
 #'
+#' @family component accessors
 #' @importFrom dplyr select any_of
 #' @importFrom tidyr unnest
 #' @importFrom rlang abort
@@ -550,6 +564,7 @@ get_estimates_df.estimates_vcov <- function(x, ...) {
 #' prepped <- prep_fit(fit, term = "ZT2")
 #' get_glance_df(prepped)
 #'
+#' @family component accessors
 #' @importFrom dplyr select any_of
 #' @importFrom tidyr unnest
 #' @importFrom rlang abort warn
@@ -621,6 +636,7 @@ get_glance_df.estimates_vcov <- function(x, ...) {
 #' ev <- as_estimates_vcov(prepped_fits)
 #' ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #'
+#' @family component accessors
 #' @importFrom dplyr pull
 #' @importFrom Matrix bdiag
 #' @importFrom rlang abort

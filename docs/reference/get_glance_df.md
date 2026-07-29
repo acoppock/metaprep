@@ -26,6 +26,12 @@ get_glance_df(x, ...)
 
 A tibble of model-level statistics (or NULL for estimates_vcov)
 
+## See also
+
+Other component accessors:
+[`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md),
+[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
+
 ## Examples
 
 ``` r

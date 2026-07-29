@@ -60,6 +60,30 @@ An object of class `rma.uni` as returned by
 or, when `cluster` is supplied, a `robust.rma` object from
 [`metafor::robust()`](https://wviechtb.github.io/metafor/reference/robust.html).
 
+## Details
+
+Taking the diagonal throws away every covariance the object carries,
+which makes the pooled standard error too small. When `vi` is not
+supplied and the vcov has nonzero off-diagonal entries, the function
+warns (with class `"metaprep_discarded_covariance"`) naming how many
+covariances were dropped. Supply `vi` explicitly when the univariate fit
+is genuinely what you want.
+
+Estimates must be finite. `metafor` drops non-finite rows with a warning
+and returns a fit whose `k` is smaller than the object, which silently
+misaligns anything joining a per-estimate quantity such as
+[`stats::weights()`](https://rdrr.io/r/stats/weights.html) back onto the
+estimates, so `rma_uni_helper()` errors instead and leaves the choice of
+which estimates to drop to you.
+
+## See also
+
+[`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md),
+which uses the full vcov and is what dependent estimates need.
+
+Other meta-analysis wrappers:
+[`rma_mv_helper()`](https://alexandercoppock.com/metaprep/reference/rma_mv_helper.md)
+
 ## Examples
 
 ``` r

@@ -45,3 +45,15 @@ ev_b <- as_estimates_vcov(bind_rows(
 bind_estimates_vcov(ev_a, ev_b)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\link{estimates_vcov} for the object's structure, and
+\code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}} to align estimate signs before or after combining.
+
+Other estimates_vcov objects:
+\code{\link[=as_estimates_vcov]{as_estimates_vcov()}},
+\code{\link{dplyr-methods}},
+\code{\link{estimates_vcov}},
+\code{\link[=make_estimates_vcov]{make_estimates_vcov()}},
+\code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}}
+}
+\concept{estimates_vcov objects}

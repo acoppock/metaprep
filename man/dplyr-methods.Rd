@@ -2,7 +2,44 @@
 % Please edit documentation in R/estimates_vcov_dplyr.R
 \name{dplyr-methods}
 \alias{dplyr-methods}
+\alias{filter.estimates_vcov}
+\alias{slice.estimates_vcov}
+\alias{slice_head.estimates_vcov}
+\alias{slice_tail.estimates_vcov}
+\alias{arrange.estimates_vcov}
+\alias{mutate.estimates_vcov}
+\alias{select.estimates_vcov}
+\alias{rename.estimates_vcov}
+\alias{relocate.estimates_vcov}
+\alias{pull.estimates_vcov}
+\alias{nest_by.estimates_vcov}
+\alias{left_join.estimates_vcov}
+\alias{right_join.estimates_vcov}
+\alias{inner_join.estimates_vcov}
+\alias{full_join.estimates_vcov}
+\alias{semi_join.estimates_vcov}
+\alias{anti_join.estimates_vcov}
 \title{dplyr methods for estimates_vcov objects}
+\arguments{
+\item{.data, x}{An \code{estimates_vcov} object.}
+
+\item{y}{A data frame to join against.}
+
+\item{...}{Passed on to the corresponding dplyr verb.}
+
+\item{.preserve, .by_group, .key, .keep, n, prop, var, name}{Passed on to the
+corresponding dplyr verb.}
+
+\item{by, copy, suffix, keep, na_matches, multiple, unmatched, relationship}{Passed on
+to the corresponding dplyr join.}
+
+\item{.before, .after}{Passed on to \code{\link[dplyr:relocate]{dplyr::relocate()}}.}
+}
+\value{
+An \code{estimates_vcov} object, except for \code{pull()}, which returns a
+vector, and \code{nest_by()}, which returns a rowwise tibble whose \code{.key} column
+holds one \code{estimates_vcov} object per group.
+}
 \description{
 These methods allow standard dplyr operations on estimates_vcov objects while
 keeping the variance-covariance matrix synchronized with the data.
@@ -22,4 +59,64 @@ vcov, so \code{mutate(estimate = -estimate)} (or any rescaling of \code{estimate
 the vcov inconsistent with the estimates. To sign-flip or rescale estimates and
 keep the covariances valid, use \code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}}, which updates the
 vcov as \eqn{\mathrm{diag}(s)\, V\, \mathrm{diag}(s)}.
+
+Joins that could change the row set are refused rather than allowed to
+desynchronize the object: \code{inner_join()} and \code{full_join()} can drop or add
+rows, and \code{right_join()} changes which rows are kept. \code{left_join()} is
+supported, and errors if the join turns out to duplicate rows. Use \code{filter()}
+when the intent is to remove estimates.
 }
+\examples{
+library(dplyr)
+
+set.seed(1)
+dat_1 <- data.frame(Y = rnorm(60), Z = factor(rep(c("T0", "T1"), each = 30)))
+dat_2 <- data.frame(Y = rnorm(90), Z = factor(rep(c("T0", "T1", "T2"), each = 30)))
+
+ev <- as_estimates_vcov(bind_rows(
+  study_1 = prep_fit(lm(Y ~ Z, dat_1), term = "ZT1"),
+  study_2 = prep_fit(lm(Y ~ Z, dat_2), term = c("ZT1", "ZT2")),
+  .id = "study"
+))
+
+# Row operations subset or reorder the vcov along with the estimates
+dim(get_vcov(ev))
+dim(get_vcov(filter(ev, study == "study_2")))
+rownames(get_vcov(arrange(ev, estimate)))
+
+# Column operations leave the vcov alone, because the rows cannot change
+ev |> mutate(abs_estimate = abs(estimate))
+ev |> select(id, study, term, estimate)
+
+# nest_by() gives one self-contained object per group, each with its own vcov
+nested <- ev |> nest_by(study)
+nested$data[[2]]
+dim(get_vcov(nested$data[[2]]))
+
+# left_join() adds columns; a join that duplicated rows would be an error
+ev |> left_join(data.frame(study = c("study_1", "study_2"),
+                           region = c("north", "south")), by = "study")
+
+# Study 2's two arms covary: that is the entry a sign flip has to update.
+get_vcov(ev)[2, 3]
+
+# mutate() does NOT transform the vcov, so this desynchronizes the object:
+get_vcov(mutate(ev, estimate = -estimate))[2, 3]  # unchanged, now wrong
+
+# rescale_estimates_vcov() updates it. Flipping one arm and not the other
+# flips the sign of their covariance, which is the case easiest to get wrong:
+get_vcov(rescale_estimates_vcov(ev, by = if_else(id == "2", -1, 1)))[2, 3]
+
+}
+\seealso{
+\code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}} to transform estimate values and the vcov
+together, and \link{estimates_vcov} for what the object guarantees.
+
+Other estimates_vcov objects:
+\code{\link[=as_estimates_vcov]{as_estimates_vcov()}},
+\code{\link[=bind_estimates_vcov]{bind_estimates_vcov()}},
+\code{\link{estimates_vcov}},
+\code{\link[=make_estimates_vcov]{make_estimates_vcov()}},
+\code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}}
+}
+\concept{estimates_vcov objects}

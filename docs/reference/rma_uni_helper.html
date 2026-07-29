@@ -15,7 +15,7 @@ use rma_mv_helper() instead to properly account for the correlation structure.">
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -92,6 +92,26 @@ clubSandwich package; <code>FALSE</code> uses metafor's CR0 estimator.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>rma.uni</code> as returned by <code><a href="https://wviechtb.github.io/metafor/reference/rma.uni.html" class="external-link">metafor::rma.uni()</a></code>, or,
 when <code>cluster</code> is supplied, a <code>robust.rma</code> object from <code><a href="https://wviechtb.github.io/metafor/reference/robust.html" class="external-link">metafor::robust()</a></code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Taking the diagonal throws away every covariance the object carries, which
+makes the pooled standard error too small. When <code>vi</code> is not supplied and the
+vcov has nonzero off-diagonal entries, the function warns (with class
+<code>"metaprep_discarded_covariance"</code>) naming how many covariances were dropped.
+Supply <code>vi</code> explicitly when the univariate fit is genuinely what you want.</p>
+<p>Estimates must be finite. <code>metafor</code> drops non-finite rows with a warning and
+returns a fit whose <code>k</code> is smaller than the object, which silently misaligns
+anything joining a per-estimate quantity such as <code><a href="https://rdrr.io/r/stats/weights.html" class="external-link">stats::weights()</a></code> back onto
+the estimates, so <code>rma_uni_helper()</code> errors instead and leaves the choice of
+which estimates to drop to you.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="rma_mv_helper.html">rma_mv_helper()</a></code>, which uses the full vcov and is what dependent
+estimates need.</p>
+<p>Other meta-analysis wrappers:
+<code><a href="rma_mv_helper.html">rma_mv_helper()</a></code></p></div>
     </div>
 
     <div class="section level2">

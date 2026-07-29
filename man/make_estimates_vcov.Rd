@@ -81,4 +81,12 @@ get_vcov(ev)
 \seealso{
 \code{\link[=as_estimates_vcov]{as_estimates_vcov()}} to build the object from \code{\link[=prep_fit]{prep_fit()}} output,
 and \code{\link[=bind_estimates_vcov]{bind_estimates_vcov()}} to combine the result with other objects.
+
+Other estimates_vcov objects:
+\code{\link[=as_estimates_vcov]{as_estimates_vcov()}},
+\code{\link[=bind_estimates_vcov]{bind_estimates_vcov()}},
+\code{\link{dplyr-methods}},
+\code{\link{estimates_vcov}},
+\code{\link[=rescale_estimates_vcov]{rescale_estimates_vcov()}}
 }
+\concept{estimates_vcov objects}

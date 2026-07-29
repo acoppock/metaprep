@@ -60,6 +60,26 @@ An object of class `rma.mv` as returned by
 or, when `cluster` is supplied, a `robust.rma` object from
 [`metafor::robust()`](https://wviechtb.github.io/metafor/reference/robust.html).
 
+## Details
+
+Estimates must be finite. `metafor` drops non-finite rows with a warning
+and returns a fit whose `k` is smaller than the object, which silently
+misaligns anything joining a per-estimate quantity such as
+[`stats::weights()`](https://rdrr.io/r/stats/weights.html) back onto the
+estimates, so `rma_mv_helper()` errors instead and leaves the choice of
+which estimates to drop to you. The same reasoning governs the
+non-finite `vcov` guard applied when the object is built.
+
+## See also
+
+[`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
+when the estimates are genuinely independent, and
+[estimates_vcov](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+for the object it reads from.
+
+Other meta-analysis wrappers:
+[`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
+
 ## Examples
 
 ``` r

@@ -18,6 +18,12 @@ navbar:
     right: [search, github]
 
 reference:
+- title: Overview
+  desc: Start here.
+  contents:
+  - metaprep-package
+  - estimates_vcov
+
 - title: Preparing model fits
   desc: Extract tidy estimates, model summaries, and vcov subsets from a fitted model.
   contents:

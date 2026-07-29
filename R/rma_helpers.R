@@ -7,6 +7,14 @@
 #' This function passes all arguments directly to [metafor::rma.mv()], but
 #' handles the `data` and `V` arguments automatically.
 #'
+#' @details
+#' Estimates must be finite. `metafor` drops non-finite rows with a warning and
+#' returns a fit whose `k` is smaller than the object, which silently misaligns
+#' anything joining a per-estimate quantity such as [stats::weights()] back onto
+#' the estimates, so `rma_mv_helper()` errors instead and leaves the choice of
+#' which estimates to drop to you. The same reasoning governs the non-finite
+#' `vcov` guard applied when the object is built.
+#'
 #' @param object An estimates_vcov object
 #' @param yi Formula or bare column name specifying the effect sizes (e.g., `estimate`)
 #' @param V Variance-covariance matrix (defaults to the vcov from object)
@@ -58,6 +66,10 @@
 #'   supplied. `TRUE` (default) requests CR2 cluster-robust standard errors via
 #'   the clubSandwich package; `FALSE` uses metafor's CR0 estimator.
 #'
+#' @seealso [rma_uni_helper()] when the estimates are genuinely independent, and
+#'   [estimates_vcov] for the object it reads from.
+#'
+#' @family meta-analysis wrappers
 #' @importFrom rlang enexpr enquo eval_tidy abort
 #' @export
 rma_mv_helper <- function(object, yi, V = NULL, cluster = NULL,
@@ -228,6 +240,19 @@ rma_robust <- function(fit, cluster, clubSandwich = TRUE) {
 #' estimates. If you have correlated estimates (e.g., from multi-arm trials),
 #' use [rma_mv_helper()] instead to properly account for the correlation structure.
 #'
+#' @details
+#' Taking the diagonal throws away every covariance the object carries, which
+#' makes the pooled standard error too small. When `vi` is not supplied and the
+#' vcov has nonzero off-diagonal entries, the function warns (with class
+#' `"metaprep_discarded_covariance"`) naming how many covariances were dropped.
+#' Supply `vi` explicitly when the univariate fit is genuinely what you want.
+#'
+#' Estimates must be finite. `metafor` drops non-finite rows with a warning and
+#' returns a fit whose `k` is smaller than the object, which silently misaligns
+#' anything joining a per-estimate quantity such as [stats::weights()] back onto
+#' the estimates, so `rma_uni_helper()` errors instead and leaves the choice of
+#' which estimates to drop to you.
+#'
 #' @param object An estimates_vcov object
 #' @param yi Formula or bare column name specifying the effect sizes (e.g., `estimate`)
 #' @param vi Numeric vector specifying the variances (defaults to diag(vcov))
@@ -271,6 +296,10 @@ rma_robust <- function(fit, cluster, clubSandwich = TRUE) {
 #'   supplied. `TRUE` (default) requests CR2 standard errors via the
 #'   clubSandwich package; `FALSE` uses metafor's CR0 estimator.
 #'
+#' @seealso [rma_mv_helper()], which uses the full vcov and is what dependent
+#'   estimates need.
+#'
+#' @family meta-analysis wrappers
 #' @importFrom rlang enexpr enquo eval_tidy abort
 #' @export
 rma_uni_helper <- function(object, yi, vi = NULL, cluster = NULL,

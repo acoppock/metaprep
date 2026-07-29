@@ -37,6 +37,14 @@ the estimates data frame and variance-covariance matrix from an estimates_vcov o
 This function passes all arguments directly to \code{\link[metafor:rma.mv]{metafor::rma.mv()}}, but
 handles the \code{data} and \code{V} arguments automatically.
 }
+\details{
+Estimates must be finite. \code{metafor} drops non-finite rows with a warning and
+returns a fit whose \code{k} is smaller than the object, which silently misaligns
+anything joining a per-estimate quantity such as \code{\link[stats:weights]{stats::weights()}} back onto
+the estimates, so \code{rma_mv_helper()} errors instead and leaves the choice of
+which estimates to drop to you. The same reasoning governs the non-finite
+\code{vcov} guard applied when the object is built.
+}
 \examples{
 \dontshow{if (requireNamespace("metafor", quietly = TRUE) && requireNamespace("randomizr", quietly = TRUE) && requireNamespace("estimatr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 library(dplyr)
@@ -72,3 +80,11 @@ if (requireNamespace("clubSandwich", quietly = TRUE)) {
 }
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\code{\link[=rma_uni_helper]{rma_uni_helper()}} when the estimates are genuinely independent, and
+\link{estimates_vcov} for the object it reads from.
+
+Other meta-analysis wrappers:
+\code{\link[=rma_uni_helper]{rma_uni_helper()}}
+}
+\concept{meta-analysis wrappers}

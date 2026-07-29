@@ -46,3 +46,9 @@ ev <- as_estimates_vcov(prepped_fits)
 ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+Other component accessors:
+\code{\link[=get_estimates_df]{get_estimates_df()}},
+\code{\link[=get_glance_df]{get_glance_df()}}
+}
+\concept{component accessors}

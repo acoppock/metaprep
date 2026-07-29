@@ -26,6 +26,12 @@ get_estimates_df(x, ...)
 
 A tibble of coefficient estimates
 
+## See also
+
+Other component accessors:
+[`get_glance_df()`](https://alexandercoppock.com/metaprep/reference/get_glance_df.md),
+[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
+
 ## Examples
 
 ``` r

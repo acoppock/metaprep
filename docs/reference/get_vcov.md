@@ -26,6 +26,12 @@ get_vcov(x, ...)
 
 A variance-covariance matrix (block-diagonal for prepped_fits)
 
+## See also
+
+Other component accessors:
+[`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md),
+[`get_glance_df()`](https://alexandercoppock.com/metaprep/reference/get_glance_df.md)
+
 ## Examples
 
 ``` r

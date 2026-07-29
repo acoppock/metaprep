@@ -36,3 +36,9 @@ ev <- as_estimates_vcov(prepped)
 get_estimates_df(ev)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+Other component accessors:
+\code{\link[=get_glance_df]{get_glance_df()}},
+\code{\link[=get_vcov]{get_vcov()}}
+}
+\concept{component accessors}

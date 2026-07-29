@@ -40,6 +40,20 @@ An `estimates_vcov` object with `estimate` (and `std.error`,
 `statistic`, `conf.low`, `conf.high` when present) and the vcov
 rescaled.
 
+## See also
+
+[dplyr-methods](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md),
+which keep the vcov row-aligned but never transform it, and
+[estimates_vcov](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+for what the object guarantees.
+
+Other estimates_vcov objects:
+[`as_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/as_estimates_vcov.md),
+[`bind_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/bind_estimates_vcov.md),
+[`dplyr-methods`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md),
+[`estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md),
+[`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md)
+
 ## Examples
 
 ``` r

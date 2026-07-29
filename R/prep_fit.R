@@ -64,6 +64,10 @@
 #' ev <- as_estimates_vcov(prepped_fits)
 #' ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 #'
+#' @seealso [as_estimates_vcov()] to turn a bound set of prepped fits into an
+#'   [estimates_vcov] object, and [get_estimates_df()] / [get_vcov()] to read the
+#'   list-columns back out.
+#'
 #' @importFrom broom tidy glance
 #' @importFrom dplyr filter mutate
 #' @importFrom stringr str_detect
