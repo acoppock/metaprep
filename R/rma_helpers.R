@@ -70,10 +70,10 @@ rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, cluster = NULL,
                                          clubSandwich = TRUE, ...) {
   # Check that metafor is available
   if (!requireNamespace("metafor", quietly = TRUE)) {
-    rlang::abort(
+    rlang::abort(c(
       "Package 'metafor' is required for rma_mv_helper().",
       "i" = "Install it with: install.packages('metafor')"
-    )
+    ))
   }
 
   # Extract estimates
@@ -151,10 +151,10 @@ check_mods_vars <- function(mods, estimates, call = rlang::caller_env()) {
 # optional clubSandwich dependency so the error is informative.
 rma_robust <- function(fit, cluster, clubSandwich = TRUE) {
   if (clubSandwich && !requireNamespace("clubSandwich", quietly = TRUE)) {
-    rlang::abort(
+    rlang::abort(c(
       "Package 'clubSandwich' is required for clubSandwich = TRUE.",
       "i" = "Install it, or call with clubSandwich = FALSE for the CR0 estimator."
-    )
+    ))
   }
   metafor::robust(fit, cluster = cluster, clubSandwich = clubSandwich)
 }
@@ -224,19 +224,14 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
                                           clubSandwich = TRUE, ...) {
   # Check that metafor is available
   if (!requireNamespace("metafor", quietly = TRUE)) {
-    rlang::abort(
+    rlang::abort(c(
       "Package 'metafor' is required for rma_uni_helper().",
       "i" = "Install it with: install.packages('metafor')"
-    )
+    ))
   }
 
   # Extract estimates
   estimates <- object$estimates
-
-  # Use diagonal of vcov if vi is NULL
-  if (is.null(vi)) {
-    vi <- diag(object$vcov)
-  }
 
   # Capture yi expression and evaluate in estimates context
   yi_expr <- rlang::enexpr(yi)

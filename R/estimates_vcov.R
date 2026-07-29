@@ -64,10 +64,10 @@ as_estimates_vcov <- function(prepped_fits_df) {
   }
 
   if (!all(c("tidy_obj", "vcov_obj") %in% names(prepped_fits_df))) {
-    rlang::abort(
+    rlang::abort(c(
       "Input must contain list-columns named `tidy_obj` and `vcov_obj`.",
       "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
-    )
+    ))
   }
 
   # Extract estimates and vcov using the unified methods
@@ -76,10 +76,10 @@ as_estimates_vcov <- function(prepped_fits_df) {
 
   # Validate dimensions
   if (nrow(estimates) != nrow(vcov)) {
-    rlang::abort(
+    rlang::abort(c(
       "Dimension mismatch between estimates and vcov matrix.",
       "i" = sprintf("estimates has %d rows, vcov has %d rows", nrow(estimates), nrow(vcov))
-    )
+    ))
   }
 
   # Repair floating-point asymmetry; error on anything larger (see symmetrize_vcov)
@@ -179,23 +179,23 @@ make_estimates_vcov <- function(estimates_df, vcov_matrix) {
 
   # Validate dimensions
   if (nrow(estimates_df) != nrow(vcov_matrix)) {
-    rlang::abort(
+    rlang::abort(c(
       "Dimension mismatch between estimates and vcov matrix.",
       "i" = sprintf(
         "estimates_df has %d rows, vcov_matrix has %d rows",
         nrow(estimates_df), nrow(vcov_matrix)
       )
-    )
+    ))
   }
 
   if (nrow(vcov_matrix) != ncol(vcov_matrix)) {
-    rlang::abort(
+    rlang::abort(c(
       "vcov_matrix must be square.",
       "i" = sprintf(
         "vcov_matrix has dimensions %d x %d",
         nrow(vcov_matrix), ncol(vcov_matrix)
       )
-    )
+    ))
   }
 
   # Repair floating-point asymmetry; error on anything larger (see symmetrize_vcov)
@@ -512,10 +512,10 @@ get_estimates_df.data.frame <- function(x, ...) {
   expected_cols <- c("tidy_obj")
   has_tidy_col <- any(expected_cols %in% names(x))
   if (!has_tidy_col) {
-    rlang::abort(
+    rlang::abort(c(
       "Input must contain a list-column named `tidy_obj`.",
       "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
-    )
+    ))
   }
 
   x |>
@@ -566,10 +566,10 @@ get_glance_df.default <- function(x, ...) {
 #' @export
 get_glance_df.data.frame <- function(x, ...) {
   if (!"glance_obj" %in% names(x)) {
-    rlang::abort(
+    rlang::abort(c(
       "Input must contain a list-column named `glance_obj`.",
       "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
-    )
+    ))
   }
 
   x |>
@@ -579,10 +579,10 @@ get_glance_df.data.frame <- function(x, ...) {
 
 #' @export
 get_glance_df.estimates_vcov <- function(x, ...) {
-  rlang::warn(
+  rlang::warn(c(
     "glance information is not stored in estimates_vcov objects.",
     "i" = "Extract glance from prepped_fits before creating estimates_vcov."
-  )
+  ))
   NULL
 }
 
@@ -637,10 +637,10 @@ get_vcov.default <- function(x, ...) {
 #' @export
 get_vcov.data.frame <- function(x, ...) {
   if (!"vcov_obj" %in% names(x)) {
-    rlang::abort(
+    rlang::abort(c(
       "Input must contain a list-column named `vcov_obj`.",
       "i" = "Did you pass the result of `prep_fit()` (or a bind_rows() of them)?"
-    )
+    ))
   }
 
   x |>

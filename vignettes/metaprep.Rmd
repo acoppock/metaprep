@@ -277,7 +277,7 @@ round(get_vcov(combined), 4)
 ```
 
 ```{r eval=requireNamespace("metafor", quietly = TRUE)}
-combined |> rma_mv_helper(yi = estimate, random = ~ 1 | study)
+combined |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
 ```
 
 Two things to keep in mind. The vcov is matched to the estimates **by position**, so row `i` of the estimates data frame must be row and column `i` of the matrix; any dimnames on the matrix are discarded and replaced by the object's `id`. That is why the pivot above ends in `select(all_of(point_estimates$study))` rather than a bare `select(-sim)`: it makes the column order follow the estimates, so a change to `estimate_both()` cannot silently transpose the correspondence. And `make_estimates_vcov()` checks that the matrix is square and symmetric, erroring on asymmetry beyond floating-point noise -- a genuinely asymmetric matrix means the rows and columns are misaligned, which would make the meta-analysis silently wrong.

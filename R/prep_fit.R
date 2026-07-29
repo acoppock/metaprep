@@ -100,8 +100,10 @@ prep_fit <- function(fit, term, match = c("exact", "regex"), handle_multivariate
     tibble::as_tibble(broom::tidy(fit)),
     error = function(e) {
       rlang::abort(
-        "Could not extract tidy coefficients from model object.",
-        "i" = "Make sure the model has a tidy() method available.",
+        c(
+          "Could not extract tidy coefficients from model object.",
+          "i" = "Make sure the model has a tidy() method available."
+        ),
         parent = e
       )
     }
@@ -111,8 +113,10 @@ prep_fit <- function(fit, term, match = c("exact", "regex"), handle_multivariate
     broom::glance(fit),
     error = function(e) {
       rlang::warn(
-        "Could not extract glance summary from model object. Using NA values.",
-        "i" = "Make sure the model has a glance() method available."
+        c(
+          "Could not extract glance summary from model object. Using NA values.",
+          "i" = "Make sure the model has a glance() method available."
+        )
       )
       # Return a minimal glance object with NAs
       data.frame(
@@ -128,8 +132,10 @@ prep_fit <- function(fit, term, match = c("exact", "regex"), handle_multivariate
     stats::vcov(fit),
     error = function(e) {
       rlang::abort(
-        "Could not extract vcov matrix from model object.",
-        "i" = "Make sure the model has a vcov() method available.",
+        c(
+          "Could not extract vcov matrix from model object.",
+          "i" = "Make sure the model has a vcov() method available."
+        ),
         parent = e
       )
     }
