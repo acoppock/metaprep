@@ -511,3 +511,155 @@ test_that("rescale_estimates_vcov validates its inputs", {
   expect_error(rescale_estimates_vcov(ev, by = c(1, 2)), "length 1 or nrow")
   expect_error(rescale_estimates_vcov(data.frame(x = 1), by = 1), "must be an estimates_vcov")
 })
+
+# ==============================================================================
+# Storage-agnostic vcov arithmetic (dense/sparse equivalence)
+# ==============================================================================
+#
+# A block-diagonal vcov is almost entirely zeros, so sparse storage is a natural
+# fit. These tests pin the property that makes such a change safe: every
+# operation the package performs on a vcov must give the same answer for either
+# representation. Each assertion is deliberately dense-versus-sparse rather than
+# against a hard-coded number, because the claim being tested is equivalence.
+
+make_block_vcov <- function() {
+  V <- matrix(0, 5, 5)
+  V[1, 1] <- 0.04
+  V[2:3, 2:3] <- matrix(c(0.05, 0.02, 0.02, 0.06), 2, 2)
+  V[4:5, 4:5] <- matrix(c(0.03, -0.01, -0.01, 0.07), 2, 2)
+  dimnames(V) <- list(as.character(1:5), as.character(1:5))
+  V
+}
+
+test_that("is_sparse_vcov distinguishes the two representations", {
+  V <- make_block_vcov()
+  expect_false(metaprep:::is_sparse_vcov(V))
+  expect_true(metaprep:::is_sparse_vcov(methods::as(V, "sparseMatrix")))
+})
+
+test_that("count_offdiag_nonzero agrees dense and sparse", {
+  V <- make_block_vcov()
+  Vs <- methods::as(V, "sparseMatrix")
+  expect_equal(metaprep:::count_offdiag_nonzero(V), 2L)
+  expect_equal(
+    metaprep:::count_offdiag_nonzero(Vs),
+    metaprep:::count_offdiag_nonzero(V)
+  )
+})
+
+test_that("count_offdiag_nonzero is zero for a diagonal vcov either way", {
+  V <- diag(c(0.1, 0.2, 0.3))
+  expect_equal(metaprep:::count_offdiag_nonzero(V), 0L)
+  expect_equal(metaprep:::count_offdiag_nonzero(methods::as(V, "sparseMatrix")), 0L)
+})
+
+test_that("scale_vcov agrees dense and sparse, and matches diag(s) V diag(s)", {
+  V <- make_block_vcov()
+  Vs <- methods::as(V, "sparseMatrix")
+  for (s in list(rep(-1, 5), c(1, -1, 1, -1, 1), c(100, 100, 100, 100, 100),
+                 c(2, 0.5, 1, 3, 0.1))) {
+    reference <- diag(s) %*% V %*% diag(s)
+    dimnames(reference) <- dimnames(V)
+    expect_equal(metaprep:::scale_vcov(V, s), reference)
+    expect_equal(as.matrix(metaprep:::scale_vcov(Vs, s)), reference)
+  }
+})
+
+test_that("scale_vcov preserves dimnames in both representations", {
+  V <- make_block_vcov()
+  s <- c(1, -1, 1, -1, 1)
+  expect_equal(dimnames(metaprep:::scale_vcov(V, s)), dimnames(V))
+  expect_equal(
+    dimnames(metaprep:::scale_vcov(methods::as(V, "sparseMatrix"), s)),
+    dimnames(V)
+  )
+})
+
+test_that("nonfinite_cells agrees dense and sparse", {
+  V <- make_block_vcov()
+  expect_equal(metaprep:::nonfinite_cells(V)$n_bad, 0L)
+  expect_equal(metaprep:::nonfinite_cells(methods::as(V, "sparseMatrix"))$n_bad, 0L)
+
+  V[2, 3] <- NA_real_
+  V[3, 2] <- NA_real_
+  Vs <- methods::as(V, "sparseMatrix")
+  dense <- metaprep:::nonfinite_cells(V)
+  sparse <- metaprep:::nonfinite_cells(Vs)
+  expect_equal(dense$n_bad, 2L)
+  expect_equal(sparse$n_bad, dense$n_bad)
+  expect_equal(sort(unique(sparse$rows)), sort(unique(dense$rows)))
+  expect_equal(sparse$n_cells, dense$n_cells)
+})
+
+test_that("nonfinite_cells reports total cells, not stored values", {
+  # The count in the error message is "N of M cells", so M must be k^2 even when
+  # only the nonzeros were scanned.
+  V <- make_block_vcov()
+  V[1, 1] <- NaN
+  expect_equal(metaprep:::nonfinite_cells(V)$n_cells, 25L)
+  expect_equal(
+    metaprep:::nonfinite_cells(methods::as(V, "sparseMatrix"))$n_cells, 25L
+  )
+})
+
+test_that("an Inf is caught in both representations", {
+  V <- make_block_vcov()
+  V[4, 4] <- Inf
+  expect_equal(metaprep:::nonfinite_cells(V)$n_bad, 1L)
+  expect_equal(metaprep:::nonfinite_cells(methods::as(V, "sparseMatrix"))$n_bad, 1L)
+})
+
+test_that("symmetrize_vcov accepts a sparse matrix and keeps it sparse", {
+  V <- make_block_vcov()
+  Vs <- methods::as(V, "sparseMatrix")
+  out <- metaprep:::symmetrize_vcov(Vs)
+  expect_true(metaprep:::is_sparse_vcov(out))
+  expect_equal(as.matrix(out), metaprep:::symmetrize_vcov(V))
+})
+
+test_that("symmetrize_vcov errors on a sparse non-finite or asymmetric vcov", {
+  V <- make_block_vcov()
+  V[2, 3] <- NA_real_
+  expect_error(
+    metaprep:::symmetrize_vcov(methods::as(V, "sparseMatrix")),
+    "contains non-finite values"
+  )
+
+  W <- make_block_vcov()
+  W[2, 3] <- 0.02
+  W[3, 2] <- -0.5
+  expect_error(
+    metaprep:::symmetrize_vcov(methods::as(W, "sparseMatrix")),
+    "is not symmetric"
+  )
+})
+
+test_that("new_estimates_vcov accepts either representation", {
+  V <- make_block_vcov()
+  est <- data.frame(term = paste0("t", 1:5), estimate = seq(0.1, 0.5, by = 0.1))
+  dense <- metaprep:::new_estimates_vcov(est, V)
+  sparse <- metaprep:::new_estimates_vcov(est, methods::as(V, "sparseMatrix"))
+  expect_s3_class(sparse, "estimates_vcov")
+  expect_equal(as.matrix(get_vcov(sparse)), get_vcov(dense))
+  expect_equal(get_estimates_df(sparse)$id, get_estimates_df(dense)$id)
+})
+
+test_that("rescale_estimates_vcov gives identical results on a sparse object", {
+  V <- make_block_vcov()
+  est <- data.frame(
+    term = paste0("t", 1:5),
+    estimate = seq(0.1, 0.5, by = 0.1),
+    std.error = sqrt(diag(V))
+  )
+  dense <- metaprep:::new_estimates_vcov(est, V)
+  sparse <- metaprep:::new_estimates_vcov(est, methods::as(V, "sparseMatrix"))
+
+  flip <- c(1, -1, 1, -1, 1)
+  rd <- rescale_estimates_vcov(dense, by = flip)
+  rs <- rescale_estimates_vcov(sparse, by = flip)
+  expect_equal(get_estimates_df(rs)$estimate, get_estimates_df(rd)$estimate)
+  expect_equal(get_estimates_df(rs)$std.error, get_estimates_df(rd)$std.error)
+  expect_equal(as.matrix(get_vcov(rs)), get_vcov(rd))
+  # the point of the partial flip: cross-covariance sign must invert
+  expect_equal(get_vcov(rd)[2, 3], -V[2, 3])
+})

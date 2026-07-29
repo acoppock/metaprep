@@ -25,6 +25,7 @@ Imports:
     broom,
     dplyr,
     Matrix,
+    methods,
     rlang,
     stringr,
     tibble,

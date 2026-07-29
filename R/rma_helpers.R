@@ -200,7 +200,7 @@ warn_discarded_covariance <- function(vcov) {
   if (nrow(vcov) < 2) {
     return(invisible())
   }
-  n_offdiag <- sum(vcov[upper.tri(vcov)] != 0)
+  n_offdiag <- count_offdiag_nonzero(vcov)
   if (n_offdiag == 0) {
     return(invisible())
   }

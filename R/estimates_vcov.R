@@ -59,6 +59,7 @@
 #' @importFrom Matrix bdiag
 #' @importFrom tibble as_tibble add_column
 #' @importFrom rlang abort
+#' @importFrom methods is
 #' @export
 as_estimates_vcov <- function(prepped_fits_df) {
   # --- Defensive checks ----
@@ -217,7 +218,7 @@ new_estimates_vcov <- function(estimates, vcov, row_map = NULL) {
   # Validate
   stopifnot(
     is.data.frame(estimates),
-    is.matrix(vcov),
+    is.matrix(vcov) || methods::is(vcov, "Matrix"),
     nrow(estimates) == nrow(vcov),
     nrow(vcov) == ncol(vcov)
   )
@@ -246,6 +247,82 @@ new_estimates_vcov <- function(estimates, vcov, row_map = NULL) {
   )
 }
 
+# ---- Storage-agnostic vcov arithmetic ----
+#
+# A block-diagonal vcov is overwhelmingly zeros (99.88% on the largest object in
+# use), so it is a natural candidate for sparse storage. The helpers below do the
+# handful of operations the package performs on a vcov in a way that is correct
+# and allocation-frugal for either representation, so that changing how the
+# matrix is stored cannot change any number the package reports.
+#
+# The trap each one avoids is a silent densification: an expression that is
+# perfectly correct but materializes a full k-by-k dense temporary, which throws
+# away the entire benefit while looking innocent.
+
+# TRUE for a Matrix-package sparse matrix.
+is_sparse_vcov <- function(x) methods::is(x, "sparseMatrix")
+
+# Transpose. A bare `t()` inside this namespace dispatches to `base::t.default`
+# for a Matrix object, because the package imports Matrix functions rather than
+# its S4 methods, and that errors with "argument is not a matrix".
+vcov_t <- function(x) if (is_sparse_vcov(x)) Matrix::t(x) else t(x)
+
+# Coerce to a triplet form that stores *both* triangles. A symmetric matrix
+# coerced with `as(V, "sparseMatrix")` becomes a symmetric class holding only one
+# triangle, so scanning its stored values sees each off-diagonal entry once and
+# misses the mirror. Going through "generalMatrix" first expands that, which is
+# what makes the scans below agree with their dense equivalents.
+to_general_triplet <- function(x) {
+  methods::as(methods::as(x, "generalMatrix"), "TsparseMatrix")
+}
+
+# Locate non-finite cells. `is.finite(as.matrix(V))` would densify; in a sparse
+# matrix only the *stored* values can be non-finite, since structural zeros are
+# finite by construction, so the scan is over nnz rather than k^2 cells.
+nonfinite_cells <- function(vcov) {
+  if (is_sparse_vcov(vcov)) {
+    trip <- to_general_triplet(vcov)
+    bad <- !is.finite(trip@x)
+    list(rows = trip@i[bad] + 1L, n_bad = sum(bad), n_cells = prod(dim(vcov)))
+  } else {
+    finite <- is.finite(vcov)
+    idx <- which(!finite, arr.ind = TRUE)
+    list(rows = idx[, "row"], n_bad = nrow(idx), n_cells = length(finite))
+  }
+}
+
+# Count nonzero entries strictly above the diagonal, i.e. how many covariances
+# the matrix actually carries. `sum(V[upper.tri(V)] != 0)` allocates a dense
+# k-by-k logical; for the largest object in use that is 13.6 MB to answer a
+# question the sparse structure already knows.
+count_offdiag_nonzero <- function(vcov) {
+  if (is_sparse_vcov(vcov)) {
+    trip <- to_general_triplet(vcov)
+    # i < j selects the strict upper triangle outright, so there is nothing to
+    # halve. Halving a "both triangles" count is the obvious wrong move here and
+    # silently reports half the covariances.
+    sum(trip@i < trip@j & trip@x != 0)
+  } else {
+    sum(vcov[upper.tri(vcov)] != 0)
+  }
+}
+
+# V |-> diag(s) V diag(s), i.e. V[i, j] * s[i] * s[j]. The direct spelling
+# `V * tcrossprod(s)` is dense k-by-k in the multiplier alone (27.3 MB on the
+# largest object), so scale rows and columns separately instead.
+scale_vcov <- function(vcov, s) {
+  out <- if (is_sparse_vcov(vcov)) {
+    d <- Matrix::Diagonal(x = s)
+    d %*% vcov %*% d
+  } else {
+    # `V * s` scales row i by s[i]; transposing and repeating scales column j by
+    # s[j]. No k-by-k temporary beyond the result itself.
+    t(t(vcov * s) * s)   # dense branch only, so base t() is correct here
+  }
+  dimnames(out) <- dimnames(vcov)
+  out
+}
+
 # Repair a vcov matrix's symmetry, or error if it is too asymmetric to be a
 # valid covariance matrix.
 #
@@ -267,20 +344,19 @@ symmetrize_vcov <- function(vcov, tol = sqrt(.Machine$double.eps),
   # symmetry condition evaluates to NA, and R aborts with "missing value where
   # TRUE/FALSE needed" -- an error that points at symmetry rather than at the
   # non-finite values that actually caused it.
-  finite <- is.finite(as.matrix(vcov))
-  if (!all(finite)) {
-    bad <- which(!finite, arr.ind = TRUE)
+  bad <- nonfinite_cells(vcov)
+  if (bad$n_bad > 0) {
     ids <- rownames(vcov)
     where <- if (!is.null(ids)) {
-      paste(unique(ids[bad[, "row"]]), collapse = ", ")
+      paste(unique(ids[bad$rows]), collapse = ", ")
     } else {
-      paste(unique(bad[, "row"]), collapse = ", ")
+      paste(unique(bad$rows), collapse = ", ")
     }
     rlang::abort(
       c(
         "`vcov` contains non-finite values and cannot be a valid covariance matrix.",
         "i" = sprintf("%d of %d cells are NA, NaN, or infinite.",
-                      nrow(bad), length(finite)),
+                      bad$n_bad, bad$n_cells),
         "i" = sprintf("Affected rows/columns: %s.", where),
         "i" = paste("This usually means a rank-deficient fit returned",
                     "coefficients but no usable standard errors. Fix the fit or",
@@ -290,7 +366,7 @@ symmetrize_vcov <- function(vcov, tol = sqrt(.Machine$double.eps),
     )
   }
 
-  asym <- max(abs(vcov - t(vcov)))
+  asym <- max(abs(vcov - vcov_t(vcov)))
   scale <- max(abs(vcov))
   if (scale > 0 && asym > tol * scale) {
     rlang::abort(
@@ -303,7 +379,7 @@ symmetrize_vcov <- function(vcov, tol = sqrt(.Machine$double.eps),
       call = call
     )
   }
-  (vcov + t(vcov)) / 2
+  (vcov + vcov_t(vcov)) / 2
 }
 
 #' Combine estimates_vcov objects
@@ -454,8 +530,7 @@ rescale_estimates_vcov <- function(ev, by) {
   }
 
   # V |-> diag(s) V diag(s), i.e. V[i,j] * s[i] * s[j]
-  vcov <- ev$vcov * tcrossprod(s)
-  dimnames(vcov) <- dimnames(ev$vcov)
+  vcov <- scale_vcov(ev$vcov, s)
 
   new_estimates_vcov(est, vcov, row_map = ev$row_map)
 }
