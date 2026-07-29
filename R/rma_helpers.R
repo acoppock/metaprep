@@ -337,7 +337,11 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
   # covariances the object carries, so say so rather than doing it quietly.
   if (is.null(vi)) {
     warn_discarded_covariance(object$vcov)
-    vi <- diag(object$vcov)
+    # Matrix::diag(), not diag(): base::diag() on a sparse matrix does not take
+    # the diagonal, it errors, and it would only work here for a caller who
+    # happens to have Matrix attached. Matrix::diag() is correct for a base
+    # matrix too, so this is right whatever the vcov's storage turns out to be.
+    vi <- Matrix::diag(object$vcov)
   }
 
   # Call rma.uni with the evaluated vector
