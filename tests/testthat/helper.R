@@ -12,6 +12,19 @@ make_test_data <- function(n = 100) {
   )
 }
 
+# rma_uni_helper() warns when it takes the diagonal of a dependent object's
+# vcov. The shared fixture below is multi-arm, so that warning is correct
+# everywhere. Tests about something else (cluster =, mods, rowwise dispatch) use
+# this to keep the expected warning out of the report; it muffles only that one
+# class, so any other warning still surfaces. Tests about the warning itself
+# assert on it directly.
+quiet_uni <- function(expr) {
+  withCallingHandlers(
+    expr,
+    metaprep_discarded_covariance = function(w) invokeRestart("muffleWarning")
+  )
+}
+
 make_test_prepped_fits <- function() {
   dat <- make_test_data()
 

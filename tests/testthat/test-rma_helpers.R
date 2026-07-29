@@ -119,8 +119,8 @@ test_that("rma_uni_helper cluster = adds CR2 cluster-robust SEs", {
 
   ev <- as_estimates_vcov(make_test_prepped_fits())
 
-  result <- ev |>
-    rma_uni_helper(yi = estimate, cluster = country)
+  result <- quiet_uni(ev |>
+    rma_uni_helper(yi = estimate, cluster = country))
 
   expect_s3_class(result, "robust.rma")
 })
@@ -191,7 +191,7 @@ test_that("rma_uni_helper works on estimates_vcov", {
   
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
-  result <- ev |> rma_uni_helper(yi = estimate)
+  result <- quiet_uni(ev |> rma_uni_helper(yi = estimate))
   
   expect_s3_class(result, "rma.uni")
 })
@@ -201,7 +201,7 @@ test_that("rma_uni_helper uses diagonal of vcov by default", {
   
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
-  result <- ev |> rma_uni_helper(yi = estimate)
+  result <- quiet_uni(ev |> rma_uni_helper(yi = estimate))
   
   expect_s3_class(result, "rma.uni")
   # The vi should come from diag(vcov)
@@ -224,8 +224,8 @@ test_that("rma_uni_helper works with moderators", {
   
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
-  result <- ev |>
-    rma_uni_helper(yi = estimate, mods = ~ country)
+  result <- quiet_uni(ev |>
+    rma_uni_helper(yi = estimate, mods = ~ country))
   
   expect_s3_class(result, "rma.uni")
 })
@@ -237,7 +237,7 @@ test_that("rma_uni_helper.list works in rowwise context", {
   
   result <- ev |>
     nest_by(country) |>
-    mutate(rma_fit = list(rma_uni_helper(data, yi = estimate)))
+    mutate(rma_fit = list(quiet_uni(rma_uni_helper(data, yi = estimate))))
   
   expect_s3_class(result$rma_fit[[1]], "rma.uni")
 })
@@ -248,7 +248,7 @@ test_that("rma_uni_helper evaluates yi in data context", {
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
   # Should be able to use bare column name
-  result <- ev |> rma_uni_helper(yi = estimate)
+  result <- quiet_uni(ev |> rma_uni_helper(yi = estimate))
   
   expect_s3_class(result, "rma.uni")
 })
@@ -258,9 +258,9 @@ test_that("rma_uni_helper works with filtered data", {
   
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
-  result <- ev |>
+  result <- quiet_uni(ev |>
     filter(country == "USA") |>
-    rma_uni_helper(yi = estimate)
+    rma_uni_helper(yi = estimate))
   
   expect_s3_class(result, "rma.uni")
 })
@@ -294,7 +294,7 @@ test_that("rma_uni_helper.list dispatches to estimates_vcov method", {
   skip_if_not_installed("metafor")
   ev <- as_estimates_vcov(make_test_prepped_fits())
 
-  result <- rma_uni_helper(list(ev), yi = estimate)
+  result <- quiet_uni(rma_uni_helper(list(ev), yi = estimate))
   expect_s3_class(result, "rma.uni")
 })
 
@@ -332,7 +332,7 @@ test_that("rma_uni_helper integrates with mutate workflow", {
   results <- ev_grouped |>
     nest_by(large_se) |>
     mutate(
-      rma_fit = list(rma_uni_helper(data, yi = estimate))
+      rma_fit = list(quiet_uni(rma_uni_helper(data, yi = estimate)))
     )
   
   expect_s3_class(results$rma_fit[[1]], "rma.uni")
@@ -358,7 +358,7 @@ test_that("rma_mv and rma_uni give different results when appropriate", {
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
   result_mv <- ev |> rma_mv_helper(yi = estimate, random = ~ 1 | id)
-  result_uni <- ev |> rma_uni_helper(yi = estimate)
+  result_uni <- quiet_uni(ev |> rma_uni_helper(yi = estimate))
   
   # They should both run successfully but may give different estimates
   # because rma.mv accounts for correlation
@@ -422,4 +422,124 @@ test_that("rma_mv_helper cluster = works inside a wrapper that passes a string-n
     rma_mv_helper(x, yi = estimate, random = ~ 1 | id, cluster = x$estimates[[cluster_var]])
   }
   expect_s3_class(pool(ev), "robust.rma")
+})
+
+# ==============================================================================
+# Discarded-covariance warning and non-finite estimate guard
+# ==============================================================================
+
+test_that("rma_uni_helper warns when it discards nonzero covariances", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  expect_gt(sum(get_vcov(ev)[upper.tri(get_vcov(ev))] != 0), 0)
+
+  expect_warning(
+    rma_uni_helper(ev, yi = estimate),
+    class = "metaprep_discarded_covariance"
+  )
+  expect_warning(
+    rma_uni_helper(ev, yi = estimate),
+    "discarding 4 nonzero covariances"
+  )
+})
+
+test_that("the discarded-covariance warning names rma_mv_helper as the fix", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  expect_warning(rma_uni_helper(ev, yi = estimate), "rma_mv_helper")
+})
+
+test_that("an explicit vi silences the warning without changing the fit", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  warned <- quiet_uni(rma_uni_helper(ev, yi = estimate))
+  explicit <- rma_uni_helper(ev, yi = estimate, vi = diag(get_vcov(ev)))
+
+  expect_no_warning(rma_uni_helper(ev, yi = estimate, vi = diag(get_vcov(ev))))
+  expect_equal(coef(warned), coef(explicit))
+  expect_equal(warned$se, explicit$se)
+})
+
+test_that("an object with no covariances does not warn", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits()) |>
+    filter(term == "ZT1")
+  expect_equal(sum(get_vcov(ev)[upper.tri(get_vcov(ev))] != 0), 0)
+  expect_no_warning(rma_uni_helper(ev, yi = estimate))
+})
+
+test_that("discarding the covariances really does shrink the standard error", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  mv <- rma_mv_helper(ev, yi = estimate, random = ~ 1 | id)
+  uni <- quiet_uni(rma_uni_helper(ev, yi = estimate))
+
+  # The warning is not cosmetic: this is the anticonservatism it reports.
+  expect_lt(uni$se, mv$se)
+})
+
+test_that("rma_mv_helper errors on a non-finite estimate", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits()) |>
+    mutate(estimate = if_else(dplyr::row_number() == 2L, NA_real_, estimate))
+
+  expect_error(
+    rma_mv_helper(ev, yi = estimate, random = ~ 1 | id),
+    "cannot enter a pooled fit"
+  )
+  expect_error(
+    rma_mv_helper(ev, yi = estimate, random = ~ 1 | id),
+    "1 of 8 estimates are NA, NaN, or infinite"
+  )
+})
+
+test_that("the non-finite estimate error names the affected ids", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits()) |>
+    mutate(estimate = if_else(dplyr::row_number() %in% c(2L, 5L), NA_real_, estimate))
+
+  expect_error(
+    rma_mv_helper(ev, yi = estimate, random = ~ 1 | id),
+    "Affected ids: 2, 5"
+  )
+})
+
+test_that("rma_uni_helper errors on a non-finite estimate", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits()) |>
+    mutate(estimate = if_else(dplyr::row_number() == 2L, NA_real_, estimate))
+
+  expect_error(
+    quiet_uni(rma_uni_helper(ev, yi = estimate)),
+    "cannot enter a pooled fit"
+  )
+})
+
+test_that("an infinite estimate is caught too", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits()) |>
+    mutate(estimate = if_else(dplyr::row_number() == 1L, Inf, estimate))
+
+  expect_error(
+    rma_mv_helper(ev, yi = estimate, random = ~ 1 | id),
+    "cannot enter a pooled fit"
+  )
+})
+
+test_that("the finite guard fires before the covariance warning", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits()) |>
+    mutate(estimate = if_else(dplyr::row_number() == 2L, NA_real_, estimate))
+
+  # A fatal problem should not be preceded by a warning about a lesser one.
+  expect_error(rma_uni_helper(ev, yi = estimate), "cannot enter a pooled fit")
+})
+
+test_that("a clean object still pools without warning or error", {
+  skip_if_not_installed("metafor")
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  expect_no_warning(rma_mv_helper(ev, yi = estimate, random = ~ 1 | id))
+  expect_no_error(rma_mv_helper(ev, yi = estimate, random = ~ 1 | id))
 })

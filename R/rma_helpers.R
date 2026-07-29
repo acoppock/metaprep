@@ -88,6 +88,9 @@ rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, cluster = NULL,
   yi_expr <- rlang::enexpr(yi)
   yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
 
+  # Guard: every estimate entering the pool must be finite
+  check_estimates_finite(yi_vec, estimates)
+
   # Guard: a mods formula must reference columns on the object
   check_mods_vars(list(...)[["mods"]], estimates)
 
@@ -145,6 +148,62 @@ check_mods_vars <- function(mods, estimates, call = rlang::caller_env()) {
     )
   }
   invisible()
+}
+
+# Internal: an estimate with no finite value must not enter a pooled fit
+# silently. metafor drops such rows with a warning and returns a fit whose `k`
+# is smaller than the object, so anything joining a per-estimate quantity back
+# onto the estimates (`weights()`, `resid()`) silently misaligns. Erroring here
+# is the mirror of the non-finite `vcov` guard in `symmetrize_vcov()`: which
+# estimates to drop is the analyst's call, not the package's.
+check_estimates_finite <- function(yi, estimates, arg = "yi",
+                                   call = rlang::caller_env()) {
+  finite <- is.finite(yi)
+  if (all(finite)) {
+    return(invisible())
+  }
+  ids <- estimates[["id"]]
+  where <- if (!is.null(ids)) ids[!finite] else which(!finite)
+  rlang::abort(
+    c(
+      sprintf("`%s` contains non-finite values and cannot enter a pooled fit.", arg),
+      "i" = sprintf("%d of %d estimates are NA, NaN, or infinite.",
+                    sum(!finite), length(finite)),
+      "i" = sprintf("Affected id%s: %s.",
+                    if (sum(!finite) > 1) "s" else "",
+                    paste(where, collapse = ", ")),
+      "i" = paste("metafor would drop these rows silently, so the fit would",
+                  "report fewer estimates than the object holds. Filter them",
+                  "out explicitly, or fix the fits that produced them.")
+    ),
+    call = call
+  )
+}
+
+# Internal: rma.uni takes only the variances, so calling it on an object whose
+# vcov has nonzero off-diagonals throws the dependence away and returns standard
+# errors that are too small. The whole point of the package is to carry those
+# covariances, so discarding them should be visible rather than silent.
+warn_discarded_covariance <- function(vcov) {
+  if (nrow(vcov) < 2) {
+    return(invisible())
+  }
+  n_offdiag <- sum(vcov[upper.tri(vcov)] != 0)
+  if (n_offdiag == 0) {
+    return(invisible())
+  }
+  rlang::warn(
+    c(
+      sprintf(paste("Using only the diagonal of the vcov, discarding %d nonzero",
+                    "covariance%s."),
+              n_offdiag, if (n_offdiag > 1) "s" else ""),
+      "i" = paste("These estimates are dependent, so the pooled standard error",
+                  "will be too small."),
+      "i" = "Use `rma_mv_helper()` to pass the full vcov to metafor::rma.mv().",
+      "i" = "Pass `vi` explicitly if the univariate fit is what you want."
+    ),
+    class = "metaprep_discarded_covariance"
+  )
 }
 
 # Internal: wrap a fitted rma object in cluster-robust SEs, guarding the
@@ -237,8 +296,20 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
   yi_expr <- rlang::enexpr(yi)
   yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
 
+  # Guard: every estimate entering the pool must be finite. Checked before the
+  # discarded-covariance warning so a fatal problem is not preceded by a warning
+  # about a lesser one.
+  check_estimates_finite(yi_vec, estimates)
+
   # Guard: a mods formula must reference columns on the object
   check_mods_vars(list(...)[["mods"]], estimates)
+
+  # Use diagonal of vcov if vi is NULL. Taking the diagonal discards any
+  # covariances the object carries, so say so rather than doing it quietly.
+  if (is.null(vi)) {
+    warn_discarded_covariance(object$vcov)
+    vi <- diag(object$vcov)
+  }
 
   # Call rma.uni with the evaluated vector
   fit <- metafor::rma.uni(
