@@ -9,7 +9,12 @@ rma_mv_helper(object, yi, V = NULL, cluster = NULL, clubSandwich = TRUE, ...)
 \arguments{
 \item{object}{An estimates_vcov object}
 
-\item{yi}{Formula or bare column name specifying the effect sizes (e.g., \code{estimate})}
+\item{yi}{Bare column name of the estimates (e.g. \code{estimate}), or a two-sided
+formula \code{estimate ~ moderators}. The formula form is metafor's own: it is
+passed through unchanged, and \code{yi = estimate ~ x} fits what
+\verb{yi = estimate, mods = ~ x} fits. Supplying both a formula and \code{mods} is an
+error, since metafor would read the moderators off the formula and ignore
+\code{mods}.}
 
 \item{V}{Variance-covariance matrix (defaults to the vcov from object)}
 

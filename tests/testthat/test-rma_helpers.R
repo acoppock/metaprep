@@ -543,3 +543,119 @@ test_that("a clean object still pools without warning or error", {
   expect_no_warning(rma_mv_helper(ev, yi = estimate, random = ~ 1 | id))
   expect_no_error(rma_mv_helper(ev, yi = estimate, random = ~ 1 | id))
 })
+
+# ==============================================================================
+# yi as a formula (metafor's own interface; regressed in 0.3.1, fixed in 0.4.1)
+# ==============================================================================
+
+test_that("rma_mv_helper accepts a formula for yi and fits what mods = fits", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  by_formula <- rma_mv_helper(ev, estimate ~ country, random = ~ 1 | id)
+  by_mods    <- rma_mv_helper(ev, yi = estimate, mods = ~ country, random = ~ 1 | id)
+
+  expect_s3_class(by_formula, "rma.mv")
+  # The equivalence is the whole basis for passing the formula through untouched,
+  # so assert it on the coefficients AND their names, not just the class.
+  expect_equal(coef(by_formula), coef(by_mods))
+  expect_equal(names(coef(by_formula)), names(coef(by_mods)))
+  expect_equal(by_formula$se, by_mods$se)
+})
+
+test_that("an intercept-only yi formula fits what a bare yi fits", {
+  skip_if_not_installed("metafor")
+
+  # `estimate ~ 1` is the plain pooled fit written in formula form. It is the
+  # most common formula call in the dependent projects, and the case a fix that
+  # rebuilt the call as `mods = ~ 1` could most easily get wrong.
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  by_formula <- rma_mv_helper(ev, estimate ~ 1, random = ~ 1 | id)
+  by_bare    <- rma_mv_helper(ev, yi = estimate, random = ~ 1 | id)
+
+  expect_equal(coef(by_formula), coef(by_bare))
+  expect_equal(by_formula$se, by_bare$se)
+})
+
+test_that("rma_uni_helper accepts a formula for yi", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  by_formula <- quiet_uni(rma_uni_helper(ev, estimate ~ country))
+  by_mods    <- quiet_uni(rma_uni_helper(ev, yi = estimate, mods = ~ country))
+
+  expect_s3_class(by_formula, "rma.uni")
+  expect_equal(coef(by_formula), coef(by_mods))
+})
+
+test_that("a formula yi still runs both guards", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  # Moderator guard: the right-hand side must live on the object, exactly as it
+  # must when passed as mods =. Passing the formula through whole would skip it.
+  expect_error(
+    rma_mv_helper(ev, estimate ~ not_a_column, random = ~ 1 | id),
+    "not found in the estimates"
+  )
+
+  # Finite guard: the left-hand side is the estimate vector, so a non-finite
+  # value must abort rather than be dropped silently by metafor.
+  ev_na <- ev
+  ev_na$estimates$estimate[1] <- NA_real_
+  expect_error(
+    rma_mv_helper(ev_na, estimate ~ country, random = ~ 1 | id),
+    "non-finite values"
+  )
+})
+
+test_that("supplying both a formula yi and mods is an error", {
+  skip_if_not_installed("metafor")
+
+  # metafor reads the moderators off the formula and never sees `mods`, so
+  # accepting both would silently drop one of them.
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  expect_error(
+    rma_mv_helper(ev, estimate ~ country, mods = ~ study_type, random = ~ 1 | id),
+    "also supplied"
+  )
+  expect_error(
+    quiet_uni(rma_uni_helper(ev, estimate ~ country, mods = ~ study_type)),
+    "also supplied"
+  )
+})
+
+test_that("a one-sided yi formula names no estimates and errors", {
+  skip_if_not_installed("metafor")
+
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  expect_error(
+    rma_mv_helper(ev, ~ country, random = ~ 1 | id),
+    "one-sided formula"
+  )
+})
+
+test_that("a formula yi survives rowwise list dispatch", {
+  skip_if_not_installed("metafor")
+
+  # The dependent projects reach the helper through nest_by() + mutate(), which
+  # dispatches on .list and forwards `yi` as an expression. The formula has to
+  # survive that hop, not just the direct call.
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+
+  by_formula <- ev |>
+    dplyr::nest_by(country) |>
+    dplyr::mutate(fit = list(rma_mv_helper(data, estimate ~ 1, random = ~ 1 | id)))
+  by_bare <- ev |>
+    dplyr::nest_by(country) |>
+    dplyr::mutate(fit = list(rma_mv_helper(data, yi = estimate, random = ~ 1 | id)))
+
+  expect_s3_class(by_formula$fit[[1]], "rma.mv")
+  expect_equal(coef(by_formula$fit[[1]]), coef(by_bare$fit[[1]]))
+})

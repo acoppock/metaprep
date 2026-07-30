@@ -1,3 +1,23 @@
+# metaprep 0.4.1
+
+* **`rma_mv_helper()` and `rma_uni_helper()` accept a formula for `yi` again.**
+  metafor reads a two-sided `yi` as estimates-on-the-left, moderators-on-the-right,
+  so `rma_mv_helper(ev, estimate ~ x)` fits what `rma_mv_helper(ev, yi = estimate,
+  mods = ~ x)` fits, down to the coefficient names. Both help pages have documented
+  `yi` as "Formula or bare column name" since the functions were written. 0.3.1's
+  non-finite guard assumed `yi` evaluated to a numeric vector and called
+  `is.finite()` on it, so every formula call started failing with
+  `default method not implemented for type 'language'`. The guards now check the
+  two sides separately (left-hand side finite, right-hand side present on the
+  object) and the formula is passed to metafor untouched, so the fit is exactly
+  what it was before the guard existed rather than a `mods =` call rebuilt by this
+  package. `estimate ~ 1`, the plain pooled fit written in formula form, is
+  covered by its own test against the bare-`yi` fit.
+
+  Supplying both a formula `yi` and `mods` is now an error rather than silently
+  dropping `mods`, and a one-sided `yi` such as `~ x` is an error naming the fix
+  instead of failing inside metafor.
+
 # metaprep 0.4.0
 
 * **The variance-covariance matrix is now stored sparsely.** A block-diagonal vcov

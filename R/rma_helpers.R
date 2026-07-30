@@ -16,7 +16,12 @@
 #' `vcov` guard applied when the object is built.
 #'
 #' @param object An estimates_vcov object
-#' @param yi Formula or bare column name specifying the effect sizes (e.g., `estimate`)
+#' @param yi Bare column name of the estimates (e.g. `estimate`), or a two-sided
+#'   formula `estimate ~ moderators`. The formula form is metafor's own: it is
+#'   passed through unchanged, and `yi = estimate ~ x` fits what
+#'   `yi = estimate, mods = ~ x` fits. Supplying both a formula and `mods` is an
+#'   error, since metafor would read the moderators off the formula and ignore
+#'   `mods`.
 #' @param V Variance-covariance matrix (defaults to the vcov from object)
 #' @param ... Additional arguments passed to [metafor::rma.mv()], such as `random`, `mods`, etc.
 #'
@@ -98,17 +103,24 @@ rma_mv_helper.estimates_vcov <- function(object, yi, V = NULL, cluster = NULL,
 
   # Capture yi expression and evaluate in estimates context
   yi_expr <- rlang::enexpr(yi)
-  yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
+  yi_value <- rlang::eval_tidy(yi_expr, data = estimates)
 
-  # Guard: every estimate entering the pool must be finite
-  check_estimates_finite(yi_vec, estimates)
+  # Guards. `yi` may evaluate to a formula, so the two sides are checked
+  # separately; see check_yi_formula() for why the formula itself is then passed
+  # to metafor untouched.
+  if (inherits(yi_value, "formula")) {
+    check_yi_formula(yi_value, estimates, list(...)[["mods"]])
+    check_estimates_finite(
+      rlang::eval_tidy(rlang::f_lhs(yi_value), data = estimates), estimates
+    )
+  } else {
+    check_estimates_finite(yi_value, estimates)
+    check_mods_vars(list(...)[["mods"]], estimates)
+  }
 
-  # Guard: a mods formula must reference columns on the object
-  check_mods_vars(list(...)[["mods"]], estimates)
-
-  # Call rma.mv with the evaluated vector
+  # Call rma.mv with the evaluated vector, or with the formula unchanged
   fit <- metafor::rma.mv(
-    yi = yi_vec,
+    yi = yi_value,
     V = V,
     data = estimates,
     ...
@@ -159,6 +171,52 @@ check_mods_vars <- function(mods, estimates, call = rlang::caller_env()) {
       call = call
     )
   }
+  invisible()
+}
+
+# Internal: `yi` may be given as a formula. metafor reads a two-sided `yi` as
+# estimates-on-the-left, moderators-on-the-right, so `rma.mv(yi = estimate ~ x)`
+# fits what `rma.mv(yi = estimate, mods = ~ x)` fits, down to the coefficient
+# names. Both helpers therefore hand the formula to metafor UNTOUCHED and use the
+# split only to run the guards: rebuilding the call as `mods =` would produce the
+# same numbers today but makes the package responsible for a translation metafor
+# already does. Without this the guards see a language object and
+# `check_estimates_finite()` dies in `is.finite()` on a call that has always been
+# valid and is documented as supported (fixed in 0.4.1; regressed in 0.3.1).
+check_yi_formula <- function(yi, estimates, mods, arg = "yi",
+                             call = rlang::caller_env()) {
+  if (is.null(rlang::f_lhs(yi))) {
+    rhs <- paste(deparse(rlang::f_rhs(yi)), collapse = " ")
+    rlang::abort(
+      c(
+        sprintf("`%s` is a one-sided formula, so it names no estimates to pool.", arg),
+        "i" = sprintf("Write the estimates on the left: `%s = estimate ~ %s`.", arg, rhs),
+        "i" = sprintf("Or pass the column and the moderators separately: `%s = estimate, mods = ~ %s`.",
+                      arg, rhs)
+      ),
+      call = call
+    )
+  }
+  # Supplying both would silently drop one of them: metafor reads the moderators
+  # off the formula and never sees `mods`.
+  if (!is.null(mods)) {
+    rlang::abort(
+      c(
+        sprintf("`%s` is a formula and `mods` was also supplied.", arg),
+        "i" = "The right-hand side of the formula already gives the moderators, so `mods` would be ignored.",
+        "i" = sprintf("Pass one or the other: `%s = estimate ~ x`, or `%s = estimate, mods = ~ x`.",
+                      arg, arg)
+      ),
+      call = call
+    )
+  }
+  # Check the moderators only. A bad left-hand side raises its own "object not
+  # found" when the estimates are evaluated, which already says the right thing.
+  check_mods_vars(
+    rlang::new_formula(NULL, rlang::f_rhs(yi), env = rlang::f_env(yi)),
+    estimates,
+    call = call
+  )
   invisible()
 }
 
@@ -254,7 +312,12 @@ rma_robust <- function(fit, cluster, clubSandwich = TRUE) {
 #' which estimates to drop to you.
 #'
 #' @param object An estimates_vcov object
-#' @param yi Formula or bare column name specifying the effect sizes (e.g., `estimate`)
+#' @param yi Bare column name of the estimates (e.g. `estimate`), or a two-sided
+#'   formula `estimate ~ moderators`. The formula form is metafor's own: it is
+#'   passed through unchanged, and `yi = estimate ~ x` fits what
+#'   `yi = estimate, mods = ~ x` fits. Supplying both a formula and `mods` is an
+#'   error, since metafor would read the moderators off the formula and ignore
+#'   `mods`.
 #' @param vi Numeric vector specifying the variances (defaults to diag(vcov))
 #' @param ... Additional arguments passed to [metafor::rma.uni()]
 #'
@@ -323,15 +386,20 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
 
   # Capture yi expression and evaluate in estimates context
   yi_expr <- rlang::enexpr(yi)
-  yi_vec <- rlang::eval_tidy(yi_expr, data = estimates)
+  yi_value <- rlang::eval_tidy(yi_expr, data = estimates)
 
-  # Guard: every estimate entering the pool must be finite. Checked before the
-  # discarded-covariance warning so a fatal problem is not preceded by a warning
-  # about a lesser one.
-  check_estimates_finite(yi_vec, estimates)
-
-  # Guard: a mods formula must reference columns on the object
-  check_mods_vars(list(...)[["mods"]], estimates)
+  # Guards, checked before the discarded-covariance warning so a fatal problem is
+  # not preceded by a warning about a lesser one. `yi` may evaluate to a formula,
+  # so the two sides are checked separately; see check_yi_formula().
+  if (inherits(yi_value, "formula")) {
+    check_yi_formula(yi_value, estimates, list(...)[["mods"]])
+    check_estimates_finite(
+      rlang::eval_tidy(rlang::f_lhs(yi_value), data = estimates), estimates
+    )
+  } else {
+    check_estimates_finite(yi_value, estimates)
+    check_mods_vars(list(...)[["mods"]], estimates)
+  }
 
   # Use diagonal of vcov if vi is NULL. Taking the diagonal discards any
   # covariances the object carries, so say so rather than doing it quietly.
@@ -344,9 +412,9 @@ rma_uni_helper.estimates_vcov <- function(object, yi, vi = NULL, cluster = NULL,
     vi <- Matrix::diag(object$vcov)
   }
 
-  # Call rma.uni with the evaluated vector
+  # Call rma.uni with the evaluated vector, or with the formula unchanged
   fit <- metafor::rma.uni(
-    yi = yi_vec,
+    yi = yi_value,
     vi = vi,
     data = estimates,
     ...
