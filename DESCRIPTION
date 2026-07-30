@@ -19,12 +19,13 @@ URL: https://alexandercoppock.com/metaprep/, https://github.com/acoppock/metapre
 BugReports: https://github.com/acoppock/metaprep/issues
 Encoding: UTF-8
 Language: en-US
-Depends: R (>= 4.1.0)
+Depends:
+    R (>= 4.1.0),
+    Matrix
 Roxygen: list(markdown = TRUE)
 Imports:
     broom,
     dplyr,
-    Matrix,
     methods,
     rlang,
     stringr,

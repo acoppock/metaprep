@@ -14,8 +14,9 @@ contain an \code{estimate} column to be usable downstream; a \code{std.error} co
 
 \item{vcov_matrix}{A variance-covariance matrix, in the same row order as
 \code{estimates_df}. Must be square, symmetric, and of the same dimension as
-\code{nrow(estimates_df)}. Sparse \code{Matrix} objects are coerced with
-\code{\link[=as.matrix]{as.matrix()}}.}
+\code{nrow(estimates_df)}. A base matrix or a \code{Matrix} object are both accepted
+and neither is converted, so the storage of the result follows what you
+supply.}
 }
 \value{
 An object of class \code{estimates_vcov}

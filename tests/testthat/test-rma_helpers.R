@@ -454,9 +454,9 @@ test_that("an explicit vi silences the warning without changing the fit", {
   ev <- as_estimates_vcov(make_test_prepped_fits())
 
   warned <- quiet_uni(rma_uni_helper(ev, yi = estimate))
-  explicit <- rma_uni_helper(ev, yi = estimate, vi = diag(get_vcov(ev)))
+  explicit <- rma_uni_helper(ev, yi = estimate, vi = Matrix::diag(get_vcov(ev)))
 
-  expect_no_warning(rma_uni_helper(ev, yi = estimate, vi = diag(get_vcov(ev))))
+  expect_no_warning(rma_uni_helper(ev, yi = estimate, vi = Matrix::diag(get_vcov(ev))))
   expect_equal(coef(warned), coef(explicit))
   expect_equal(warned$se, explicit$se)
 })

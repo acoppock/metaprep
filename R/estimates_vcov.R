@@ -76,7 +76,7 @@ as_estimates_vcov <- function(prepped_fits_df) {
 
   # Extract estimates and vcov using the unified methods
   estimates <- get_estimates_df(prepped_fits_df)
-  vcov <- get_vcov(prepped_fits_df) |> as.matrix()
+  vcov <- get_vcov(prepped_fits_df)
 
   # Validate dimensions
   if (nrow(estimates) != nrow(vcov)) {
@@ -118,8 +118,9 @@ as_estimates_vcov <- function(prepped_fits_df) {
 #'   [rescale_estimates_vcov()] has standard errors to rescale.
 #' @param vcov_matrix A variance-covariance matrix, in the same row order as
 #'   `estimates_df`. Must be square, symmetric, and of the same dimension as
-#'   `nrow(estimates_df)`. Sparse `Matrix` objects are coerced with
-#'   [as.matrix()].
+#'   `nrow(estimates_df)`. A base matrix or a `Matrix` object are both accepted
+#'   and neither is converted, so the storage of the result follows what you
+#'   supply.
 #'
 #' @return An object of class `estimates_vcov`
 #'
@@ -174,13 +175,11 @@ make_estimates_vcov <- function(estimates_df, vcov_matrix) {
     rlang::abort("`estimates_df` must be a data frame or tibble.")
   }
 
-  if (!is.matrix(vcov_matrix)) {
-    # Try to coerce from sparse matrix
-    if (inherits(vcov_matrix, "Matrix")) {
-      vcov_matrix <- as.matrix(vcov_matrix)
-    } else {
-      rlang::abort("`vcov_matrix` must be a matrix or Matrix object.")
-    }
+  # Either representation is accepted and neither is converted: storage follows
+  # the data. A block-diagonal vcov is overwhelmingly zeros and belongs sparse; a
+  # bootstrapped cov() is genuinely dense and would only grow if forced sparse.
+  if (!is.matrix(vcov_matrix) && !methods::is(vcov_matrix, "Matrix")) {
+    rlang::abort("`vcov_matrix` must be a matrix or Matrix object.")
   }
 
   # Validate dimensions
@@ -313,7 +312,17 @@ count_offdiag_nonzero <- function(vcov) {
 scale_vcov <- function(vcov, s) {
   out <- if (is_sparse_vcov(vcov)) {
     d <- Matrix::Diagonal(x = s)
-    d %*% vcov %*% d
+    scaled <- d %*% vcov %*% d
+    # diag(s) V diag(s) preserves symmetry, but the product loses the *symmetric
+    # storage class*, which doubles the stored values. Restore it when the input
+    # had it, so a sign flip does not silently double an object's footprint.
+    # Conditional on the input's class rather than unconditional, so this cannot
+    # mask a genuinely asymmetric matrix.
+    if (methods::is(vcov, "symmetricMatrix")) {
+      Matrix::forceSymmetric(scaled)
+    } else {
+      scaled
+    }
   } else {
     # `V * s` scales row i by s[i]; transposing and repeating scales column j by
     # s[j]. No k-by-k temporary beyond the result itself.
@@ -453,7 +462,7 @@ bind_estimates_vcov <- function(...) {
   }))
 
   # Block-diagonal assembly: independent across objects (zero cross-covariance)
-  vcov <- as.matrix(Matrix::bdiag(lapply(objs, function(o) o$vcov)))
+  vcov <- Matrix::bdiag(lapply(objs, function(o) o$vcov))
   vcov <- symmetrize_vcov(vcov)
 
   new_estimates_vcov(estimates, vcov)

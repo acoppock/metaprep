@@ -108,9 +108,13 @@ test_that("get_vcov works on estimates_vcov", {
   ev <- as_estimates_vcov(make_test_prepped_fits())
   
   vcov_matrix <- get_vcov(ev)
-  
-  expect_true(is.matrix(vcov_matrix))
+
+  # get_vcov() passes the stored matrix through rather than converting it. What
+  # is promised is shape and content, not storage class, so that is what is
+  # asserted; see the "Public interface" section of ?estimates_vcov.
   expect_identical(vcov_matrix, ev$vcov)
+  expect_equal(nrow(vcov_matrix), nrow(get_estimates_df(ev)))
+  expect_equal(nrow(vcov_matrix), ncol(vcov_matrix))
 })
 
 test_that("get_vcov errors on invalid input", {
@@ -152,7 +156,8 @@ test_that("as_estimates_vcov creates valid object", {
   expect_true(is.list(ev))
   expect_named(ev, c("estimates", "vcov", "row_map"))
   expect_s3_class(ev$estimates, "tbl_df")
-  expect_true(is.matrix(ev$vcov))
+  expect_equal(nrow(ev$vcov), ncol(ev$vcov))
+  expect_equal(nrow(ev$vcov), nrow(ev$estimates))
   expect_type(ev$row_map, "integer")
 })
 
@@ -264,9 +269,12 @@ test_that("make_estimates_vcov handles sparse matrices", {
   vcov_sparse <- get_vcov(prepped_fits)  # May be sparse
   
   ev <- make_estimates_vcov(estimates_df, vcov_sparse)
-  
+
   expect_s3_class(ev, "estimates_vcov")
-  expect_true(is.matrix(ev$vcov))
+  # A sparse matrix is accepted and kept sparse rather than densified
+  expect_true(metaprep:::is_sparse_vcov(ev$vcov))
+  expect_equal(as.matrix(get_vcov(ev)), as.matrix(vcov_sparse),
+               ignore_attr = TRUE)
 })
 
 # ==============================================================================
@@ -365,7 +373,7 @@ test_that("bind_estimates_vcov stacks estimates and block-diagonalizes vcov", {
 
   # Each original block is preserved on the diagonal
   expect_equal(unname(combined$vcov[1, 1]), 0.0025)
-  expect_equal(unname(combined$vcov[2:3, 2:3]),
+  expect_equal(as.matrix(unname(combined$vcov[2:3, 2:3])),
                matrix(c(0.0036, 0.001, 0.001, 0.0049), 2, 2))
 
   # id renumbered across the combined object
@@ -469,8 +477,10 @@ test_that("rescale_estimates_vcov full sign flip negates estimates and keeps vco
   expect_equal(r$estimates$estimate, -ev$estimates$estimate)
   expect_equal(r$estimates$std.error, ev$estimates$std.error)   # |-1| = 1
   expect_equal(r$estimates$statistic, -ev$estimates$statistic)
-  # full flip: s_i * s_j = 1 everywhere, so vcov is unchanged
-  expect_equal(unname(r$vcov), unname(ev$vcov))
+  # full flip: s_i * s_j = 1 everywhere, so vcov is unchanged. Compared as dense,
+  # because scaling can return a general sparse class where the input was stored
+  # symmetric; the values are what must be unchanged, not the storage.
+  expect_equal(as.matrix(unname(r$vcov)), as.matrix(unname(ev$vcov)))
   # confidence bounds negate and swap
   expect_equal(r$estimates$conf.low,  -ev$estimates$conf.high)
   expect_equal(r$estimates$conf.high, -ev$estimates$conf.low)
@@ -481,11 +491,14 @@ test_that("rescale_estimates_vcov partial flip updates cross-covariance signs", 
   s  <- ifelse(seq_len(nrow(ev$estimates)) == 1, -1, 1)   # flip only row 1
   r  <- rescale_estimates_vcov(ev, by = s)
 
-  expect_equal(unname(r$vcov), unname(ev$vcov * outer(s, s)))
+  expect_equal(as.matrix(unname(r$vcov)),
+               as.matrix(unname(ev$vcov * outer(s, s))))
   # a cross-covariance from the flipped row to an unflipped partner is negated
   expect_equal(r$vcov[1, 2], -ev$vcov[1, 2])
   # diagonal (s_i^2 = 1) unchanged
-  expect_equal(diag(r$vcov), diag(ev$vcov))
+  # Matrix::diag(): testthat evaluates in the package namespace, where a bare
+  # diag() is base::diag(). A user has Matrix attached (it is in Depends).
+  expect_equal(Matrix::diag(r$vcov), Matrix::diag(ev$vcov))
 })
 
 test_that("rescale_estimates_vcov rescales units consistently", {
@@ -662,4 +675,72 @@ test_that("rescale_estimates_vcov gives identical results on a sparse object", {
   expect_equal(as.matrix(get_vcov(rs)), get_vcov(rd))
   # the point of the partial flip: cross-covariance sign must invert
   expect_equal(get_vcov(rd)[2, 3], -V[2, 3])
+})
+
+# ==============================================================================
+# vcov storage
+# ==============================================================================
+
+test_that("as_estimates_vcov stores the block-diagonal vcov sparsely", {
+  ev <- as_estimates_vcov(make_test_prepped_fits())
+  # A block-diagonal vcov is almost entirely zeros, so it is stored sparse. This
+  # is an implementation choice the object deliberately does not promise; the
+  # test pins current behavior so a change is visible rather than accidental.
+  expect_true(metaprep:::is_sparse_vcov(get_vcov(ev)))
+})
+
+test_that("make_estimates_vcov preserves the storage it is given", {
+  V <- matrix(c(0.04, 0.01, 0.01, 0.05), 2, 2)
+  est <- data.frame(term = c("a", "b"), estimate = c(0.2, 0.3),
+                    std.error = sqrt(diag(V)))
+  # Storage follows the data: a bootstrapped cov() is genuinely dense and would
+  # only grow if forced sparse.
+  expect_false(metaprep:::is_sparse_vcov(get_vcov(make_estimates_vcov(est, V))))
+  expect_true(metaprep:::is_sparse_vcov(
+    get_vcov(make_estimates_vcov(est, methods::as(V, "sparseMatrix")))
+  ))
+})
+
+test_that("sparse storage does not change what the object reports", {
+  V <- matrix(0, 4, 4)
+  V[1:2, 1:2] <- matrix(c(0.04, 0.01, 0.01, 0.05), 2, 2)
+  V[3:4, 3:4] <- matrix(c(0.03, -0.02, -0.02, 0.06), 2, 2)
+  est <- data.frame(term = paste0("t", 1:4), estimate = c(0.1, 0.2, 0.3, 0.4),
+                    std.error = sqrt(diag(V)))
+  dense <- make_estimates_vcov(est, V)
+  sparse <- make_estimates_vcov(est, methods::as(V, "sparseMatrix"))
+
+  expect_equal(as.matrix(get_vcov(sparse)), get_vcov(dense))
+  expect_equal(metaprep:::count_offdiag_nonzero(get_vcov(sparse)),
+               metaprep:::count_offdiag_nonzero(get_vcov(dense)))
+  expect_equal(Matrix::diag(get_vcov(sparse)), Matrix::diag(get_vcov(dense)))
+
+  # and through a dplyr verb
+  fd <- dplyr::filter(dense, term %in% c("t1", "t2"))
+  fs <- dplyr::filter(sparse, term %in% c("t1", "t2"))
+  expect_equal(as.matrix(get_vcov(fs)), get_vcov(fd))
+})
+
+test_that("a sparse object pools identically to a dense one", {
+  skip_if_not_installed("metafor")
+  V <- matrix(0, 4, 4)
+  V[1:2, 1:2] <- matrix(c(0.04, 0.01, 0.01, 0.05), 2, 2)
+  V[3:4, 3:4] <- matrix(c(0.03, -0.02, -0.02, 0.06), 2, 2)
+  est <- data.frame(term = paste0("t", 1:4), estimate = c(0.1, 0.2, 0.3, 0.4),
+                    std.error = sqrt(diag(V)))
+
+  fd <- rma_mv_helper(make_estimates_vcov(est, V), yi = estimate, random = ~ 1 | id)
+  fs <- rma_mv_helper(make_estimates_vcov(est, methods::as(V, "sparseMatrix")),
+                      yi = estimate, random = ~ 1 | id)
+  expect_equal(coef(fs), coef(fd))
+  expect_equal(fs$se, fd$se)
+  expect_equal(fs$sigma2, fd$sigma2)
+})
+
+test_that("Matrix is attached for callers, not merely imported", {
+  # The object hands callers a sparse matrix, and diag()/t() on one resolve to
+  # Matrix's S4 generics only when Matrix is on the search path. Moving Matrix
+  # from Depends to Imports would silently break `diag(ev$vcov)` for every user,
+  # which is the most common operation on the corpus, so it is pinned here.
+  expect_match(packageDescription("metaprep")$Depends, "Matrix")
 })
