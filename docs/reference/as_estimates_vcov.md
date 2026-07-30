@@ -37,7 +37,9 @@ An object of class `estimates_vcov` containing:
 
 - row_map:
 
-  Integer vector tracking original row indices
+  Internal bookkeeping; see
+  [estimates_vcov](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+  for what is and is not part of the public interface
 
 ## See also
 

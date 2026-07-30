@@ -1,3 +1,32 @@
+# metaprep 0.4.0
+
+* **The variance-covariance matrix is now stored sparsely.** A block-diagonal vcov
+  is overwhelmingly zeros (99.88% on the largest object in real use), so this is
+  a large win: 27.5 MB becomes 0.3 MB, and `metafor::rma.mv()` runs roughly 7x
+  faster because it does not densify internally. Verified against 115
+  `estimates_vcov` objects: every vcov quantity, and every pooled fit on a
+  well-conditioned object, is unchanged. `get_vcov()` returns the stored matrix
+  rather than converting it, and `make_estimates_vcov()` accepts either a base
+  matrix or a `Matrix` and converts neither, so storage follows the data (a
+  bootstrapped `cov()` is genuinely dense and would only grow if forced sparse).
+  Sparse matrices print with `.` for structural zeros, which makes the
+  block-diagonal structure easier to read.
+* **Breaking-ish:** `Matrix` moves from `Imports` to `Depends`, so
+  `library(metaprep)` now attaches it. This is required rather than cosmetic:
+  `Matrix` defines `diag()` and `t()` as S4 generics in its own namespace instead
+  of adding methods to the base functions, so without attachment
+  `diag(ev$vcov)` does not take the diagonal of a sparse matrix, it errors.
+  Attaching `Matrix` masks base `t`, `diag`, `det`, `solve`, and `crossprod` in
+  your search path. Code that tested `is.matrix(ev$vcov)` will now get `FALSE`;
+  see the "Public interface" section of `?estimates_vcov` for what the object
+  does and does not promise. Scalar element access (`V[i, j]` in a loop) is
+  markedly slower on a sparse matrix, so call `as.matrix()` once if you are
+  reading thousands of individual cells.
+* Internally, the four operations the package performs on a vcov are now
+  storage-agnostic, so the representation cannot affect a reported number.
+  `rma_uni_helper()` takes the diagonal with `Matrix::diag()` rather than
+  `diag()`, which would have errored on a sparse matrix.
+
 # metaprep 0.3.1
 
 * New `?estimates_vcov` help page documenting the object the package is built

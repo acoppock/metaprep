@@ -41,8 +41,9 @@ make_estimates_vcov(estimates_df, vcov_matrix)
 
   A variance-covariance matrix, in the same row order as `estimates_df`.
   Must be square, symmetric, and of the same dimension as
-  `nrow(estimates_df)`. Sparse `Matrix` objects are coerced with
-  [`as.matrix()`](https://rdrr.io/r/base/matrix.html).
+  `nrow(estimates_df)`. A base matrix or a `Matrix` object are both
+  accepted and neither is converted, so the storage of the result
+  follows what you supply.
 
 ## Value
 

@@ -79,7 +79,6 @@ vcov from the object automatically:
 ``` r
 
 library(metafor)
-#> Loading required package: Matrix
 #> Loading required package: metadat
 #> Loading required package: numDeriv
 #> 

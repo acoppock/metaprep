@@ -33,7 +33,7 @@ both from the same ordered set of terms."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,8 +96,9 @@ contain an <code>estimate</code> column to be usable downstream; a <code>std.err
 <dt id="arg-vcov-matrix">vcov_matrix<a class="anchor" aria-label="anchor" href="#arg-vcov-matrix"></a></dt>
 <dd><p>A variance-covariance matrix, in the same row order as
 <code>estimates_df</code>. Must be square, symmetric, and of the same dimension as
-<code>nrow(estimates_df)</code>. Sparse <code>Matrix</code> objects are coerced with
-<code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix()</a></code>.</p></dd>
+<code>nrow(estimates_df)</code>. A base matrix or a <code>Matrix</code> object are both accepted
+and neither is converted, so the storage of the result follows what you
+supply.</p></dd>
 
 </dl></div>
     <div class="section level2">

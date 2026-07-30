@@ -1,6 +1,103 @@
 # Changelog
 
+## metaprep 0.4.0
+
+- **The variance-covariance matrix is now stored sparsely.** A
+  block-diagonal vcov is overwhelmingly zeros (99.88% on the largest
+  object in real use), so this is a large win: 27.5 MB becomes 0.3 MB,
+  and
+  [`metafor::rma.mv()`](https://wviechtb.github.io/metafor/reference/rma.mv.html)
+  runs roughly 7x faster because it does not densify internally.
+  Verified against 115 `estimates_vcov` objects: every vcov quantity,
+  and every pooled fit on a well-conditioned object, is unchanged.
+  [`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
+  returns the stored matrix rather than converting it, and
+  [`make_estimates_vcov()`](https://alexandercoppock.com/metaprep/reference/make_estimates_vcov.md)
+  accepts either a base matrix or a `Matrix` and converts neither, so
+  storage follows the data (a bootstrapped
+  [`cov()`](https://rdrr.io/r/stats/cor.html) is genuinely dense and
+  would only grow if forced sparse). Sparse matrices print with `.` for
+  structural zeros, which makes the block-diagonal structure easier to
+  read.
+- **Breaking-ish:** `Matrix` moves from `Imports` to `Depends`, so
+  [`library(metaprep)`](https://alexandercoppock.com/metaprep/) now
+  attaches it. This is required rather than cosmetic: `Matrix` defines
+  [`diag()`](https://rdrr.io/r/base/diag.html) and
+  [`t()`](https://rdrr.io/r/base/t.html) as S4 generics in its own
+  namespace instead of adding methods to the base functions, so without
+  attachment `diag(ev$vcov)` does not take the diagonal of a sparse
+  matrix, it errors. Attaching `Matrix` masks base `t`, `diag`, `det`,
+  `solve`, and `crossprod` in your search path. Code that tested
+  `is.matrix(ev$vcov)` will now get `FALSE`; see the “Public interface”
+  section of
+  [`?estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+  for what the object does and does not promise. Scalar element access
+  (`V[i, j]` in a loop) is markedly slower on a sparse matrix, so call
+  [`as.matrix()`](https://rdrr.io/r/base/matrix.html) once if you are
+  reading thousands of individual cells.
+- Internally, the four operations the package performs on a vcov are now
+  storage-agnostic, so the representation cannot affect a reported
+  number.
+  [`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
+  takes the diagonal with `Matrix::diag()` rather than
+  [`diag()`](https://rdrr.io/r/base/diag.html), which would have errored
+  on a sparse matrix.
+
 ## metaprep 0.3.1
+
+- New
+  [`?estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+  help page documenting the object the package is built around. It had
+  none: the central noun of the package was undocumented, so nothing
+  said what the components are, what the `id` column is for, which dplyr
+  verbs keep the vcov aligned and which are refused, or what the object
+  guarantees at construction.
+  [`?metaprep`](https://alexandercoppock.com/metaprep/reference/metaprep-package.md)
+  is also new, giving the four-step workflow and the two silent failures
+  the package refuses to guess about.
+
+- [`?estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md)
+  gains a “Public interface” section settling what callers may rely on.
+  `estimates` and `vcov` are public: read them as `ev$estimates` /
+  `ev$vcov` or through \[get_estimates_df()\] / \[get_vcov()\],
+  whichever suits, and both will keep working. What is guaranteed about
+  `vcov` is its content and shape (square, symmetric, finite, one row
+  and column per estimate in the same order, `dimnames` equal to `id`),
+  not its storage class, so ordinary matrix operations are the supported
+  way to use it and [`is.matrix()`](https://rdrr.io/r/base/matrix.html)
+  is not. `row_map` is documented as internal, since the verbs do not
+  agree on what its “parent” means:
+  [`filter()`](https://dplyr.tidyverse.org/reference/filter.html) and
+  the filtering joins set it to positions within the object they were
+  handed while
+  [`arrange()`](https://dplyr.tidyverse.org/reference/arrange.html)
+  composes it through. Use `id` for a stable per-estimate label.
+
+- The S3 methods are reachable by name.
+  [`?filter.estimates_vcov`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md),
+  [`?print.estimates_vcov`](https://alexandercoppock.com/metaprep/reference/estimates_vcov.md),
+  [`?nest_by.estimates_vcov`](https://alexandercoppock.com/metaprep/reference/dplyr-methods.md)
+  and the rest previously returned “no documentation”: the
+  `dplyr-methods` page carried no aliases, so a caller who knew a
+  method’s name could not find its page.
+
+- `dplyr-methods` gains runnable examples, documented arguments, and a
+  `@return` section. It is the page that carries the
+  `mutate(estimate = -estimate)` desync warning and it had nothing
+  runnable beside the prose. The examples now show the trap and its fix
+  on the one entry where it is visible, the within-study covariance,
+  using a partial sign flip so the covariance changes sign.
+
+- `@family` tags group the exports into `estimates_vcov objects`,
+  `component accessors`, and `meta-analysis wrappers`, so every page now
+  generates a See Also block pointing at its siblings. There were none
+  before, across ten exports.
+  [`prep_fit()`](https://alexandercoppock.com/metaprep/reference/prep_fit.md)
+  gains an explicit `@seealso` to the same effect.
+
+- New examples use base [`lm()`](https://rdrr.io/r/stats/lm.html) rather
+  than `randomizr` plus `estimatr`, so they run without any suggested
+  package installed.
 
 - [`rma_uni_helper()`](https://alexandercoppock.com/metaprep/reference/rma_uni_helper.md)
   no longer discards covariances silently.

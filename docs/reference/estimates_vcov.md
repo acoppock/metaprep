@@ -34,20 +34,43 @@ The object is a list of three components:
 
 - `vcov`:
 
-  A square numeric matrix, one row and column per estimate, whose
-  `dimnames` are the `id` values.
+  A square symmetric matrix, one row and column per estimate, in the
+  same order as the rows of `estimates`, with `dimnames` equal to the
+  `id` values.
 
 - `row_map`:
 
-  An integer vector recording which rows of the parent object these rows
-  came from. Bookkeeping; rarely needed directly.
+  Internal bookkeeping. See "Public interface" below.
 
-Read the components with
+## Public interface
+
+`estimates` and `vcov` are part of the public interface. Read them
+however suits the code you are writing: `ev$estimates` and `ev$vcov`
+directly, or
 [`get_estimates_df()`](https://alexandercoppock.com/metaprep/reference/get_estimates_df.md)
 and
-[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md)
-rather than reaching into the list, so that code keeps working if the
-internals change.
+[`get_vcov()`](https://alexandercoppock.com/metaprep/reference/get_vcov.md).
+Both will keep working.
+
+What is guaranteed about `vcov` is its *content and shape*, not its
+storage class: square, symmetric, finite, one row and column per
+estimate in the same order as `estimates`, `dimnames` equal to `id`.
+Ordinary matrix operations (`V[i, j]`, `V[idx, idx]`, `diag(V)`,
+`upper.tri(V)`, `w %*% V %*% w`) are the supported way to use it, and
+they behave the same whether the matrix is stored densely or sparsely.
+Code that tests the storage class itself, for instance with
+[`is.matrix()`](https://rdrr.io/r/base/matrix.html), is relying on
+something the object does not promise.
+
+`row_map` is **internal** and may change without notice. It records
+which rows of a parent object the current rows came from, but the verbs
+do not agree on what "parent" means:
+[`filter()`](https://dplyr.tidyverse.org/reference/filter.html) and the
+filtering joins set it to positions within the object they were handed,
+while [`arrange()`](https://dplyr.tidyverse.org/reference/arrange.html)
+composes it through. Do not build on it. Use `id` when you need a stable
+per-estimate label; it is preserved through subsetting for exactly that
+purpose.
 
 ## The id column
 
@@ -152,10 +175,11 @@ rownames(get_vcov(ev))
 
 # Study 2's two arms covary; study 1 is independent of both
 round(get_vcov(ev), 5)
+#> 3 x 3 sparse Matrix of class "dsCMatrix"
 #>         1       2       3
-#> 1 0.04955 0.00000 0.00000
-#> 2 0.00000 0.05672 0.02836
-#> 3 0.00000 0.02836 0.05672
+#> 1 0.04955 .       .      
+#> 2 .       0.05672 0.02836
+#> 3 .       0.02836 0.05672
 
 # Subsetting keeps the two in step, and keeps the original ids
 ev_2 <- filter(ev, study == "study_2")
