@@ -23,8 +23,12 @@ rma_mv_helper(object, yi, V = NULL, cluster = NULL, clubSandwich = TRUE, ...)
 
 - yi:
 
-  Formula or bare column name specifying the effect sizes (e.g.,
-  `estimate`)
+  Bare column name of the estimates (e.g. `estimate`), or a two-sided
+  formula `estimate ~ moderators`. The formula form is metafor's own: it
+  is passed through unchanged, and `yi = estimate ~ x` fits what
+  `yi = estimate, mods = ~ x` fits. Supplying both a formula and `mods`
+  is an error, since metafor would read the moderators off the formula
+  and ignore `mods`.
 
 - V:
 

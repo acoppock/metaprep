@@ -7,7 +7,7 @@ use rma_mv_helper() instead to properly account for the correlation structure.">
 the estimates data frame and variance estimates from an estimates_vcov object.
 Note: This function uses the diagonal of the vcov matrix as the variance
 estimates. If you have correlated estimates (e.g., from multi-arm trials),
-use rma_mv_helper() instead to properly account for the correlation structure."></head><body>
+use rma_mv_helper() instead to properly account for the correlation structure."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;1,400&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&amp;family=IBM+Plex+Mono:wght@400&amp;display=swap" rel="stylesheet"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -15,7 +15,7 @@ use rma_mv_helper() instead to properly account for the correlation structure.">
 
     <a class="navbar-brand me-2" href="../index.html">metaprep</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,12 @@ use <code><a href="rma_mv_helper.html">rma_mv_helper()</a></code> instead to pro
 
 
 <dt id="arg-yi">yi<a class="anchor" aria-label="anchor" href="#arg-yi"></a></dt>
-<dd><p>Formula or bare column name specifying the effect sizes (e.g., <code>estimate</code>)</p></dd>
+<dd><p>Bare column name of the estimates (e.g. <code>estimate</code>), or a two-sided
+formula <code>estimate ~ moderators</code>. The formula form is metafor's own: it is
+passed through unchanged, and <code>yi = estimate ~ x</code> fits what
+<code>yi = estimate, mods = ~ x</code> fits. Supplying both a formula and <code>mods</code> is an
+error, since metafor would read the moderators off the formula and ignore
+<code>mods</code>.</p></dd>
 
 
 <dt id="arg-vi">vi<a class="anchor" aria-label="anchor" href="#arg-vi"></a></dt>
