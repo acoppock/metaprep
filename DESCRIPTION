@@ -3,7 +3,7 @@ Type: Package
 Title: Tidy Preparation of Dependent Effect Estimates for Meta-Analysis
 Version: 0.4.1
 Authors@R: c(person(
-      given = "Alex",
+      given = "Alexander",
       family = "Coppock",
       email = "acoppock@gmail.com",
       role = c("aut", "cre")))
